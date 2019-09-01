@@ -1,5 +1,15 @@
 #include "subproblem.h"
 
+/*      subproblem.c -- program with functions for solving the projected
+ *                        sub problem using the conjugate gradient method.
+ *
+ *      Author:     John Cormican
+ *
+ *      Purpouse:   To manage the conjugate gradient algorithm on the subproblem.
+ *
+ *      Usage:      Various functions called from algorithm.c.
+ *
+ */
 
 void alloc_subprob(struct Projected *sp, int p)
 /*  Function to allocate space to solve the projected problem of size p.

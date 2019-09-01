@@ -12,6 +12,10 @@
 #include <omp.h>
 #include <mpi.h>
 
+/*    managetrade.h -- header file for managetrade.c
+ *
+ *    Author: John Cormican
+ */
+
 void tradeInfo(struct receiveData *rd, struct denseData *ds, struct yDenseData *nds, struct Fullproblem *fp, struct Fullproblem *newfp, int nprocs, int myid, MPI_Comm comm);
 void freeRdata(struct receiveData *rd, int myid);
-

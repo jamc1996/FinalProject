@@ -8,7 +8,7 @@
 #include "svm.h"
 #include "kernels.h"
 
-/*      fullproblem.h -- header file for fullproblem.c
+/*      linked.h -- header file for linked.c
  *
  *      Author:     John Cormican
  *

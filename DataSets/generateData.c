@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <math.h>
 
-int main(){
+int main()
+/* Function to generate fake datasets for model training. */
+{
 	double k, ok, okay;
 	FILE *fp;
 	srand48(77);

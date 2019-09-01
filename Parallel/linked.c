@@ -1,5 +1,22 @@
 #include "linked.h"
 
+/*
+
+ *      DISCLAIMER: THE FUNCTIONS IN THIS PROGRAM WERE ADAPTED FOR THIS
+ *      ALGORITHM WERE ADAPTED FROM MY SOLUTION TO ASSIGNMENT 4 IN MA5613
+ *      TAUGHT BY MIKE PEARDON.
+
+ *      linked.c -- program with functions for solving the projected
+ *                        sub problem using the conjugate gradient method.
+ *
+ *      Author:     John Cormican
+ *
+ *      Purpouse:   To manage the conjugate gradient algorithm on the subproblem.
+ *
+ *      Usage:      Various functions called from algorithm.c.
+ *
+ */
+
 double* findListLineSetLabel(List l, int n , int newLabel)
 {
   Cell* temp = l.head;

@@ -1,6 +1,19 @@
 #include "io.h"
 
+/*      io.c -- program with functions for reading a .txt file aswell as
+ *               storing/testing trained models
+ *
+ *      Author:     John Cormican
+ *
+ *      Purpouse:   To manage the input and output of the program.
+ *
+ *      Usage:      read_file() called from main(). save_trained_model or
+ *                    test_trained_model may also be used.
+ *
+ */
+
 void divideSet(struct denseData *ds, int nprocs, int myid)
+/*Function to divide the dataset across multiple processors. */
 {
 	int allSz = ds->nInstances/nprocs;
 	int allMod = ds->nInstances%nprocs;
@@ -40,7 +53,11 @@ void divideSet(struct denseData *ds, int nprocs, int myid)
 	}
 }
 
-void read_file(char* filename, struct denseData* ds, int nprocs, int myid){
+void read_file(char* filename, struct denseData* ds, int nprocs, int myid)
+/* Function to read the data file.*/
+{
+
+
   FILE *fp = fopen(filename, "r");
   if (fp == NULL){
     fprintf(stderr, "gert: io.c: read_file() - file %s not found\n",filename );
@@ -76,7 +93,7 @@ void read_file(char* filename, struct denseData* ds, int nprocs, int myid){
 		continue;
 	}
 	else if(procR == ds->procPos){
-		continue;	
+		continue;
 	}
 	else {
 		temp = ds->data[procR];
@@ -98,7 +115,7 @@ void read_file(char* filename, struct denseData* ds, int nprocs, int myid){
 		continue;
 	}
 	else if(procQ == ds->procNeg){
-		continue;	
+		continue;
 	}
 	else {
 		temp = ds->data[procQ + ds->procPos];
@@ -117,6 +134,7 @@ void read_file(char* filename, struct denseData* ds, int nprocs, int myid){
 }
 }
 void count_entries(FILE *input, struct denseData* ds)
+/* FUnction to count the entries of a data file.*/
 {
   ds->nInstances = 0;
   ds->nFeatures = -1;
@@ -158,6 +176,7 @@ void count_entries(FILE *input, struct denseData* ds)
 }
 
 void saveTrainedModel(struct Fullproblem *fp, struct yDenseData *ds, char *filename, struct svm_args *params)
+/* Function to save the entries of a trained model. */
 {
   FILE *file = fopen(filename, "w");
   fprintf(file, "%d\n",params->kernel );
@@ -194,7 +213,7 @@ void saveTrainedModel(struct Fullproblem *fp, struct yDenseData *ds, char *filen
           H[i][j] += ds->data[i][k]*ds->data[active[j]][k];
         }
        	if( ds->y[active[j]]*ds->y[i]<0){
-	
+
         	H[i][j] = -H[i][j];
       }
       }

@@ -1,70 +1,16 @@
 #include "kernels.h"
 
-/*
-int setH(struct Fullproblem *prob, struct denseData *ds, struct svm_args *params)
- *  TO DO -> ALLOW ONLY UPDATE THE SWAPPED OUT VALUES - or not?   
-{
-  Cell *temp = prob->partialH.head;
-  int i = 0;
-	int k;
-  if (params->kernel == LINEAR) {
-    while(temp != NULL) {
-			#pragma omp parallel for private(k)
-      for (int j = 0; j < prob->n; j++) {
-        temp->line[j] = 0.0;
-        for (k = 0; k < ds->nFeatures; k++) {
-          temp->line[j] += ds->data[j][k]*ds->data[prob->active[i]][k];
-        }
-	if(j<ds->procPos ^ temp->label < ds->procPos ){
-        	temp->line[j] = -temp->line[j];
-	}	
-      }
-      temp = temp->next;
-      i++;
-    }
-  }
-  else if (params->kernel == POLYNOMIAL) {
-    while(temp != NULL) {
-      for (int j = 0; j < prob->n; j++) {
-        temp->line[j] = 0.0;
-        for (int k = 0; k < ds->nFeatures; k++) {
-          temp->line[j] += ds->data[j][k]*ds->data[prob->active[i]][k];
-        }
-        temp->line[j] = pow(temp->line[j]+params->Gamma, params->degree);
-       	if(j<ds->procPos ^ temp->label < ds->procPos ){
-        	temp->line[j] = -temp->line[j];
-	}
-      }
-      i++;
-      temp = temp->next;
-    }
-  }
-  else if (params->kernel == EXPONENTIAL) {
-    double x;
-    double y;
-    while (temp != NULL) {
-      for (int j = 0; j < prob->p; j++) {
-        y = 0.0;
-        for (int k = 0; k < ds->nFeatures; k++) {
-          x = (ds->data[prob->active[i]][k]-ds->data[j][k]);
-          y -= x*x;
-        }
-        y *= params->Gamma;
-        temp->line[j] = exp(y);
-       	if(j<ds->procPos ^ temp->label < ds->procPos ){
-        	temp->line[j] = -temp->line[j];
-	}
-      }
-      i++;
-      temp = temp->next;
-    }
-  }
-  else {
-    return 1;
-  }
-  return 0;
-}
-*/
+/*      kernels.c -- program with functions for calculating PH and hatH
+ *                matrices for linear, polynomial, and exponential kernels.
+ *
+ *      Author:     John Cormican
+ *
+ *      Purpouse:   To perform the heavy calculation of the PH matrix.
+ *
+ *      Usage:      Functions called to update entries in fp.partialH, sp.H
+ *
+ */
+ 
 int updateSubH(struct Fullproblem *fp, struct Projected *sp, struct svm_args *params)
 {
   Cell* temp = fp->partialH.head;
@@ -134,7 +80,7 @@ void newAppendUpdate(struct denseData *ds, struct receiveData *rd, struct Fullpr
 		if( n < rd->my_p){
 			#pragma omp parallel for private(j)
   	  for (int i = 0; i < newfp->n; i++) {
-				if(i<rd->my_p){      	
+				if(i<rd->my_p){
 					line[i] = 0.0;
   	    	for ( j = 0; j < ds->nFeatures; j++) {
   	    	  line[i] += ds->data[rd->myIndex[i]][j]*ds->data[rd->myIndex[n]][j];
@@ -157,7 +103,7 @@ void newAppendUpdate(struct denseData *ds, struct receiveData *rd, struct Fullpr
 		else{
 			#pragma omp parallel for private(j)
   	  for (int i = 0; i < newfp->n; i++) {
-				if(i<rd->my_p){      	
+				if(i<rd->my_p){
 					line[i] = 0.0;
   	    	for ( j = 0; j < ds->nFeatures; j++) {
   	    	  line[i] += ds->data[rd->myIndex[i]][j]*ds->data[rd->myIndex[n]][j];
@@ -290,7 +236,7 @@ void YpartialHupdate(struct Fullproblem *fp, struct Projected *sp, struct yDense
         nline[j]+=ds->data[fp->inactive[worst]][k]*ds->data[j][k];
       }
       nline[j] = pow(nline[j]+params->Gamma, params->degree);
-     	nline[j] *= ds->y[j]*ds->y[fp->inactive[worst]];	
+     	nline[j] *= ds->y[j]*ds->y[fp->inactive[worst]];
 
 
 

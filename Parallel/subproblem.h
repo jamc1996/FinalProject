@@ -8,6 +8,12 @@
 #include <stdio.h>
 #include <math.h>
 
+/*      subproblem.h -- header file for subproblem.c
+ *
+ *      Author:     John Cormican
+ *
+ */
+
 void Yinit_subprob(struct Projected *sp, struct Fullproblem *fp, struct yDenseData *ds, struct svm_args *params, int newRows);
 void alloc_subprob(struct Projected *sp, int p);
 void init_subprob(struct Projected *sp, struct Fullproblem *fp, struct denseData *ds, struct svm_args *params, int newRows);

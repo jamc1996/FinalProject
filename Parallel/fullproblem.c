@@ -1,6 +1,18 @@
 
 #include "fullproblem.h"
 
+/*      fullproblem.c -- program with functions for solving the full problem
+ *                        and monitoring the elements in need of optimisation.
+ *
+ *      Author:     John Cormican
+ *
+ *      Purpouse:   To store the solution vector alpha and manage selection of
+ *                  elements for optimisation.
+ *
+ *      Usage:      Various functions called from algorithm.c.
+ *
+ */
+
 void alloc_prob(struct Fullproblem *prob, struct denseData *ds, int p)
 /* Function to allocate space necessary for a full problem of size n,
  * that will be projected to size p.  */
@@ -350,7 +362,7 @@ int Ysingleswap(struct yDenseData *ds, struct Fullproblem *fp, struct Projected 
   int temp = fp->active[n];
   if (flag)
   {
- if ( (ds->y[fp->inactive[worst]] == target)){ 
+ if ( (ds->y[fp->inactive[worst]] == target)){
       YadjustGradF(fp, ds, sp, n, worst, change, 1, flag, params, diff);
       fp->alpha[fp->inactive[worst]] += diff;
       fp->alpha[fp->active[n]] = sp->C;

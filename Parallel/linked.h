@@ -8,6 +8,12 @@
 #include "svm.h"
 #include "kernels.h"
 
+/*      linked.h -- header file for linked.c
+ *
+ *      Author:     John Cormican
+ *
+ */
+
 List Yappend(struct yDenseData *ds, List l, int n);
 
 double* findListLine(List l, int n);

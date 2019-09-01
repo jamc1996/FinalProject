@@ -1,5 +1,13 @@
 #include "managetrade.h"
-void freeRdata(struct receiveData *rd, int myid){
+
+/*    managetrade.c -- methods for handling the initial trade of information between processors.
+ *
+ *    Author: John Cormican
+ */
+
+void freeRdata(struct receiveData *rd, int myid)
+/* Function to free the malloced values in the receive data structure*/
+{
 	if(myid != 0){
 		free(rd->alpha);
 		free(rd->y);
@@ -11,9 +19,10 @@ void freeRdata(struct receiveData *rd, int myid){
 
 
 void tradeInfo(struct receiveData *rd, struct denseData *ds, struct yDenseData *nds, struct Fullproblem *fp, struct Fullproblem *nfp, int nprocs, int myid, MPI_Comm comm)
+/* Function to handle the initial exchange of information between processors. */
 {
 	int my_missed = 0;
-	int *my_missedInds;	
+	int *my_missedInds;
 
 	rd->nFeatures = ds->nFeatures;
 	for(int i=0; i<fp->n; i++){
@@ -125,7 +134,7 @@ void tradeInfo(struct receiveData *rd, struct denseData *ds, struct yDenseData *
 			if(nfp->gradF[i] > 0){
 				nds->y[i] = 1;
 				nfp->alpha[i] = nfp->gradF[i];
-				pos++;			
+				pos++;
 			}else{
 				nds->y[i] = -1;
 				nfp->alpha[i] = -nfp->gradF[i];
@@ -201,5 +210,5 @@ void tradeInfo(struct receiveData *rd, struct denseData *ds, struct yDenseData *
 	}
 		rd->w = malloc(sizeof(double)*rd->nFeatures);
 
-	free(my_missedInds);	
+	free(my_missedInds);
 }

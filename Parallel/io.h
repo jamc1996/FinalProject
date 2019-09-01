@@ -19,6 +19,13 @@
 #define WHT   "\x1B[37m"
 #define RESET "\x1B[0m"
 
+/*      io.h -- header file for io.c
+ *
+ *      Author:     John Cormican
+ *
+ */
+
+
 void divideSet(struct denseData *ds, int nprocs, int myid);
 void testSavedModel(struct denseData *ds, char* fn, struct svm_args *params);
 void saveTrainedModel(struct Fullproblem *fp, struct yDenseData *ds, char *filename, struct svm_args *params);

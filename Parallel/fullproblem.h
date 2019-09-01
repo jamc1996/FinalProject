@@ -10,6 +10,12 @@
 #include "svm.h"
 #include "kernels.h"
 
+/*      fullproblem.h -- header file for fullproblem.c
+ *
+ *      Author:     John Cormican
+ *
+ */
+
 void YcalculateBeta(struct Fullproblem *fp, struct Projected *sp, struct yDenseData *ds);
 void YfindWorst(int *worst, int* target, int* change, int *n, struct yDenseData *ds, struct Fullproblem *fp);
 int Ysingleswap(struct yDenseData *ds, struct Fullproblem *fp, struct Projected *sp, int n, struct svm_args *params);
