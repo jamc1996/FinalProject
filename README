@@ -1,0 +1,15 @@
+This is the repository for gertSVM, my parallel implimentation of the svm training method using the conjugate gradient method as described by Wen, Edelman, and Gorsich (2001).
+
+The repository are divided as follows:
+
+	Serial -- the serial implementation of the training method.
+
+		test with: 
+			$make test
+
+	Parallel -- the parallel implementation of the training method.
+
+		test with:
+			$make testMP
+
+	Datasets -- code to generate fake datasets for testing.
