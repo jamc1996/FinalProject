@@ -24,4 +24,5 @@ void rootCalcW(struct receiveData *rd, struct yDenseData *nds, struct Fullproble
 void calcW(struct receiveData *rd);
 void ReceiveCalcBeta(struct Fullproblem *fp, struct receiveData *rd, struct denseData *ds);
 void updatePartialH(struct yDenseData *nds, struct Fullproblem *nfp, int global_n);
+void freeYdata( struct yDenseData *nds);
 void update_root_nfp(struct yDenseData *nds, struct Fullproblem *nfp, int nprocs, int global_n );
