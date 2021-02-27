@@ -538,3 +538,201 @@ void calcStdDev(double* stdDev, double* mean, struct denseData *ds)
     stdDev[i] = sqrt(stdDev[i]/((double)(ds->nInstances)-1.0));
   }
 }
+
+struct svmModel createFittedModel(double *w, int kernel, int trainElapsedTime, struct denseData *ds, struct Fullproblem *fp, double ytr){
+  struct svmModel fittedModel;
+  fittedModel.decisionVector = w;
+  fittedModel.biasTerm = ytr;
+  fittedModel.trainElapsedTime = trainElapsedTime;
+  fittedModel.kernel = kernel;
+  fittedModel.nFeatures = ds->nFeatures;
+  int missed = 0;
+  for (int i = 0; i < fp->q; i++) {
+    if (fp->alpha[fp->inactive[i]] > 0) {
+      missed++;
+    }
+  }
+  int *missedInds = malloc(sizeof(int)*missed);
+  int j = 0;
+  for (int i = 0; i < fp->q; i++) {
+    if (fp->alpha[fp->inactive[i]] > 0.0) {
+      missedInds[j] = fp->inactive[i];
+      j++;
+    }
+  }
+
+  if (kernel == LINEAR) {
+    for (int i = 0; i < ds->nFeatures; i++) {
+      fittedModel.decisionVector[i] = 0.0;
+      for (int j = 0; j < fp->p; j++) {
+				if(fp->active[j] < ds->nPos){
+	        fittedModel.decisionVector[i] += fp->alpha[fp->active[j]]*ds->data[fp->active[j]][i];
+				}
+				else{
+	        fittedModel.decisionVector[i] -= fp->alpha[fp->active[j]]*ds->data[fp->active[j]][i];
+				}
+      }
+      for (int j = 0; j < missed; j++) {
+        if(missedInds[j] < ds->nPos){
+          fittedModel.decisionVector[i] += ds->data[missedInds[j]][i]*fp->C;
+        }
+        else{
+          fittedModel.decisionVector[i] -= ds->data[missedInds[j]][i]*fp->C;
+        }
+      }
+    }
+  }
+  return fittedModel;
+}
+
+
+void saveTrainedModel2(
+  struct Fullproblem *fp,
+  struct denseData *ds,
+  double ytr,
+  const char* fileName
+)
+{
+  FILE *file = fopen(fileName, "w");
+  int kernel = LINEAR;
+  fprintf(file, "%d\n", kernel );
+  fprintf(file, "%d\n", ds->nFeatures );
+  int missed = 0;
+  for (int i = 0; i < fp->q; i++) {
+    if (fp->alpha[fp->inactive[i]] > 0) {
+      missed++;
+    }
+  }
+  int *missedInds = malloc(sizeof(int)*missed);
+  int j = 0;
+  for (int i = 0; i < fp->q; i++) {
+    if (fp->alpha[fp->inactive[i]] > 0.0) {
+      missedInds[j] = fp->inactive[i];
+      j++;
+    }
+  }
+
+  if (kernel == LINEAR) {
+    double *w = malloc(sizeof(double)*ds->nFeatures);
+
+    for (int i = 0; i < ds->nFeatures; i++) {
+      w[i] = 0.0;
+      for (int j = 0; j < fp->p; j++) {
+				if(fp->active[j] < ds->nPos){
+	        w[i] += fp->alpha[fp->active[j]]*ds->data[fp->active[j]][i];
+				}
+				else{
+	        w[i] -= fp->alpha[fp->active[j]]*ds->data[fp->active[j]][i];
+				}
+      }
+      for (int j = 0; j < missed; j++) {
+        if(missedInds[j] < ds->nPos){
+          w[i] += ds->data[missedInds[j]][i]*fp->C;
+        }
+        else{
+          w[i] -= ds->data[missedInds[j]][i]*fp->C;
+        }
+      }
+    }
+    fprintf(file, "%lf\n",ytr );
+    for (int i = 0; i < ds->nFeatures; i++) {
+      fprintf(file, "%lf\n",w[i] );
+    }
+    free(w);
+
+  }
+  else if(kernel == POLYNOMIAL){
+    fprintf(file, "%d\n", fp->p + missed );
+
+	  fprintf(file, "%lf\n",ytr );
+
+    for (int i = 0; i < fp->p; i++) {
+      for (int j = 0; j < ds->nFeatures; j++) {
+        fprintf(file, "%lf\n",ds->data[fp->active[i]][j] );
+      }
+    }
+    for (int i = 0; i < missed; i++) {
+      for (int j = 0; j < ds->nFeatures; j++) {
+        fprintf(file, "%lf\n",ds->data[missedInds[i]][j] );
+      }
+    }
+
+    for (int i = 0; i < fp->p; i++) {
+			if(fp->active[i] < ds->nPos){
+	      fprintf(file, "%lf\n",fp->alpha[fp->active[i]] );
+  	  }
+			else{
+	      fprintf(file, "%lf\n",-fp->alpha[fp->active[i]] );
+			}
+  	}
+    for (int i = 0; i < missed; i++) {
+      if(missedInds[i] < ds->nPos){
+        fprintf(file, "%lf\n",fp->C );
+      }
+      else{
+        fprintf(file, "%lf\n",-fp->C );
+      }
+    }
+	}
+  else if(kernel == EXPONENTIAL)
+  {
+    fprintf(file, "%d\n", fp->p + missed );
+
+    fprintf(file, "%lf\n",ytr );
+
+    for (int i = 0; i < fp->p; i++) {
+      for (int j = 0; j < ds->nFeatures; j++) {
+        fprintf(file, "%lf\n",ds->data[fp->active[i]][j] );
+      }
+    }
+    for (int i = 0; i < missed; i++) {
+      for (int j = 0; j < ds->nFeatures; j++) {
+        fprintf(file, "%lf\n",ds->data[missedInds[i]][j] );
+      }
+    }
+
+    for (int i = 0; i < fp->p; i++) {
+			if(fp->active[i] < ds->nPos){
+	      fprintf(file, "%lf\n",fp->alpha[fp->active[i]] );
+  	  }
+			else{
+	      fprintf(file, "%lf\n",-fp->alpha[fp->active[i]] );
+  	  }
+  	}
+    for (int i = 0; i < missed; i++) {
+      if(missedInds[i] < ds->nPos){
+        fprintf(file, "%lf\n",fp->C );
+      }
+      else{
+        fprintf(file, "%lf\n",-fp->C );
+      }
+    }
+	}
+  free(missedInds);
+  fclose(file);
+}
+
+void change_params(struct svm_args *parameters)
+/* Function to parse command line arguments with getopt */
+{
+  // Default values set:
+  parameters->kernel = 0;
+  parameters->degree = 1;
+  parameters->verbose = 0;
+  parameters->C = 1;
+  parameters->test = 0;
+  parameters->modelfile = NULL;
+  parameters->save = 0;
+  parameters->savename = NULL;
+  parameters->Gamma = 1;
+}
+
+void setUpDense(struct denseData *ds, double** trainData, int nFeatures, int nInstances, int nPos){
+  ds->nInstances = nInstances;
+  ds->nFeatures = nFeatures;
+  ds->nNeg = nInstances - nPos;
+  ds->nPos = nPos;
+  ds->data = trainData;
+  ds->data1d = ds->data[0];
+}
+

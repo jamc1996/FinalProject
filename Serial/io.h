@@ -35,5 +35,9 @@ void preprocess(struct denseData *ds);
 void calcMeans(double *mean, struct denseData *ds);
 void normalise(double* mean, double* stdDev, struct denseData* ds);
 void calcStdDev(double* stdDev, double* mean, struct denseData *ds);
+struct svmModel createFittedModel(double *w, int kernel, int trainElapsedTime, struct denseData *ds, struct Fullproblem *fp, double ytr);
+void setUpDense(struct denseData *ds, double** trainData, int nFeatures, int nInstances, int nPos);
+void change_params(struct svm_args *parameters);
+void saveTrainedModel2(struct Fullproblem *fp, struct denseData *ds, double ytr, const char* fileName);
 
 #endif
