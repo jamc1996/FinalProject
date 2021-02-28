@@ -95,8 +95,9 @@ class CgSvmTransformer:
 
     def transform(
             self,
-            arranged_numpy_array
+            arranged_pandas_df
         ):
+        arranged_numpy_array = arranged_pandas_df.to_numpy(dtype=np.float64, na_value=0.0)
         array_pp = (
             arranged_numpy_array.__array_interface__['data'][0] + 
             np.arange(arranged_numpy_array.shape[0])*arranged_numpy_array.strides[0]
@@ -149,7 +150,7 @@ class CgSvm:
 
     def fit(
             self,
-            arranged_numpy_array,
+            arranged_pandas_df,
             n_positive,
             save_to_file=False,
             file_name=''
@@ -157,10 +158,9 @@ class CgSvm:
         if save_to_file and not file_name:
             raise ValueError('If saving to file, file_name must be set.')
 
+        arranged_numpy_array = arranged_pandas_df.to_numpy(dtype=np.float64, na_value=0.0)
         n_instances = arranged_numpy_array.shape[0]
-        print(n_instances)
         n_features = arranged_numpy_array.shape[1]
-        print(n_features)
 
         array_pp = (
             arranged_numpy_array.__array_interface__['data'][0] + 
