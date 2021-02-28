@@ -15,7 +15,6 @@ int main(int argc, char *argv[]) {
 
   struct timeval start, trainStart, trainEnd, end;
 
-
   gettimeofday(&start, 0);
 
   // Input processed:
@@ -23,7 +22,6 @@ int main(int argc, char *argv[]) {
   read_file(filename, &ds);
 
   //  preprocess(&ds);
-
   if(parameters.test){
     testSavedModel(&ds, parameters.modelfile);
     return 0;

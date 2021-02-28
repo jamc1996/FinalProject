@@ -36,7 +36,7 @@ int run_algorithm(struct denseData *ds, struct Fullproblem *fp, struct Projected
 
   while(k){
     // H matrix columns re-set and subproblem changed
-    if(itt%10000 == 0){
+    if(itt%10000 == 0 && itt>0){
       printf("itt = %d\n",itt );
     }
 

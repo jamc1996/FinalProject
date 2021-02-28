@@ -44,12 +44,12 @@ typedef struct svm_args
 
 // denseData structure for storing dataset
 typedef struct denseData{
-  int nInstances;
-  int nFeatures;
+	int nInstances;
+	int nFeatures;
 	int nPos;
 	int nNeg;
-  double** data;
-  double* data1d;
+	double** data;
+	double* data1d;
 } dataSet;
 
 // Projected struct for the projected subproblem
@@ -89,6 +89,14 @@ typedef struct Fullproblem{
 
 	List partialH;
 } Bigprob;
+
+typedef struct svmModel{
+  int kernel;
+  int trainElapsedTime;
+  int nFeatures;
+  double* decisionVector;
+  double biasTerm;
+} fitSvmModel;
 
 struct svm_args parameters;
 

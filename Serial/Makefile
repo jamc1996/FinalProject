@@ -5,9 +5,15 @@ CPFLAGS = -Wall -std=c++11
 CFLAGS = -Wall -std=c99
 
 objects = main.o io.o algorithm.o fullproblem.o subproblem.o kernels.o linked.o
+pyobjects = pythoninterface.o io.o algorithm.o fullproblem.o subproblem.o kernels.o linked.o
+
+all: gert pygert
 
 gert: $(objects) svm.h Makefile
 	$(CC) $(CFLAGS) -o gert $(objects) -lm
+
+pygert: $(pyobjects) svm.h Makefile
+	$(CC) $(CFLAGS) -o pygert $(pyobjects) -lm
 
 main.o: main.c svm.h Makefile
 	$(CC) $(CFLAGS) -c $<

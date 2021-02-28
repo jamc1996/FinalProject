@@ -60,7 +60,7 @@ void init_prob(struct Fullproblem *prob, struct denseData *ds)
     }
   }
   for (int i = 0; i < prob->p; i++) {
-    prob->partialH = append(ds,prob->partialH,prob->active[i]);
+    prob->partialH = append(ds, prob->partialH,prob->active[i]);
   }
 }
 
