@@ -9,31 +9,31 @@
 int main(int argc, char *argv[]) {
   char* filename = NULL;
 
-  struct denseData ds;
-  struct Fullproblem fp;
-  struct Projected sp;
+  struct denseData fullDataset;
+  struct Fullproblem alphOptProblem;
+  struct Projected projectedSubProblem;
 
   struct timeval start, trainStart, trainEnd, end;
 
   gettimeofday(&start, 0);
 
   // Input processed:
-  parse_arguments(argc, argv, &filename);
-  read_file(filename, &ds);
+  parseArguments(argc, argv, &filename);
+  readFile(filename, &fullDataset);
 
-  //  preprocess(&ds);
+  //  preprocess(&fullDataset);
   if(parameters.test){
-    testSavedModel(&ds, parameters.modelfile);
+    testSavedModel(&fullDataset, parameters.modelfile);
     return 0;
   }
 
   gettimeofday(&trainStart, 0);
-  run_algorithm(&ds, &fp, &sp);
+  runAlgorithm(&fullDataset, &alphOptProblem, &projectedSubProblem);
   gettimeofday(&trainEnd, 0);
 
   //Model saved to a txt file.
   if (parameters.save) {
-    saveTrainedModel(&fp, &ds, sp.ytr);
+    saveTrainedModel(&alphOptProblem, &fullDataset, projectedSubProblem.ytr);
   }
 
   gettimeofday(&end, 0);
@@ -52,8 +52,8 @@ int main(int argc, char *argv[]) {
 
 
   //Memory freed and program exits
-  freeDenseData(&ds);
-  freeFullproblem(&fp);
-  freeSubProblem(&sp);
+  freeDenseData(&fullDataset);
+  freeFullproblem(&alphOptProblem);
+  freeSubProblem(&projectedSubProblem);
   return 0;
 }

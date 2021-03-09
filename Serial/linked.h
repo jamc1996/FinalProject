@@ -17,7 +17,7 @@
 
 double* findListLine(List l, int n);
 List Init_Empty_List();
-List append(struct denseData *ds, List l, int n);
+List append(struct denseData *fullDataset, List l, int n);
 void print_list(List l);
 void free_list(List l);
 List delete(int find, List l);

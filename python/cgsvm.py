@@ -42,7 +42,7 @@ _CGSVM_FUNCTIONS = [
         'argtypes': [POINTER(Projected), POINTER(Fullproblem)],
     },
     {
-        'funcname': 'copy_vector',
+        'funcname': 'copyVector',
         'restype': None,
         'argtypes': [POINTER(c_double), POINTER(c_double), c_int],
     },
@@ -140,7 +140,7 @@ class CgSvm:
                 )
             )
     
-    def copy_vector(self, array_to_copy, template_array, array_length):
+    def copyVector(self, array_to_copy, template_array, array_length):
         ctype_array_to_copy = numpy_to_c_types(array_to_copy)
         ctype_template_array = numpy_to_c_types(template_array)
         self._copy_vector(ctype_array_to_copy, ctype_template_array, array_length)

@@ -86,6 +86,11 @@ def main():
     print('cgsvm accuracy: ', correct_cg_count/bc_df.shape[0])
     print('sklearn accuracy: ', accuracy_score(bc_df_target, skl_preds)  )
 
+    scatter_x = np.array([0.0, 0.0, 3.0, 4.0])
+    scatter_y = np.array([0.0, 1.0, 3.0, 5.0])
+    df = pd.DataFrame({'x':scatter_x, 'y':scatter_y})
+    cg_svm_model = cg_svm.fit(df, 5, save_to_file=True, file_name='imagegen_pythontest.txt')
+
 
 
 if __name__ == "__main__":

@@ -17,5 +17,5 @@
  *    Author: John Cormican
  */
 
-void tradeInfo(struct receiveData *rd, struct denseData *ds, struct yDenseData *nds, struct Fullproblem *fp, struct Fullproblem *newfp, int nprocs, int myid, MPI_Comm comm);
+void tradeInfo(struct receiveData *rd, struct denseData *fullDataset, struct yDenseData *nds, struct Fullproblem *alphOptProblem, struct Fullproblem *newfp, int nprocs, int myid, MPI_Comm comm);
 void freeRdata(struct receiveData *rd, int myid);

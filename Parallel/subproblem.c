@@ -11,81 +11,81 @@
  *
  */
 
-void alloc_subprob(struct Projected *sp, int p)
+void allocProjectedProblem(struct Projected *projectedSubProblem, int p)
 /*  Function to allocate space to solve the projected problem of size p.
  */
 {
-  sp->p = p;
-  sp->C = 100.0;
+  projectedSubProblem->p = p;
+  projectedSubProblem->C = 100.0;
 
-  sp->alphaHat = malloc(sizeof(double)*p);
-  sp->yHat = malloc(sizeof(int)*p);
-  sp->rHat = malloc(sizeof(double)*p);
-  sp->gamma = malloc(sizeof(double)*p);
-  sp->rho = malloc(sizeof(double)*p);
-  sp->Hrho = malloc(sizeof(double)*p);
+  projectedSubProblem->alphaHat = malloc(sizeof(double)*p);
+  projectedSubProblem->yHat = malloc(sizeof(int)*p);
+  projectedSubProblem->rHat = malloc(sizeof(double)*p);
+  projectedSubProblem->gamma = malloc(sizeof(double)*p);
+  projectedSubProblem->rho = malloc(sizeof(double)*p);
+  projectedSubProblem->Hrho = malloc(sizeof(double)*p);
 
   // H symmetric so can save space:
-  sp->H = malloc(sizeof(double*)*p);
-  sp->h = malloc(sizeof(double)*((p*(p+1))/2));
+  projectedSubProblem->H = malloc(sizeof(double*)*p);
+  projectedSubProblem->h = malloc(sizeof(double)*((p*(p+1))/2));
   int j = 0;
   for (int i = 0; i < p; i++) {
-    sp->H[i] = &(sp->h[j]);
+    projectedSubProblem->H[i] = &(projectedSubProblem->h[j]);
     j+=(p-i-1);
   }
 }
 
-void Yinit_subprob(struct Projected *sp, struct Fullproblem *fp, struct yDenseData *ds, struct svm_args *params, int newRows)
+void Yinit_subprob(struct Projected *projectedSubProblem, struct Fullproblem *alphOptProblem, struct yDenseData *fullDataset, struct svm_args *params, int newRows)
 /* Function to initialize the values of the subproblem struct, given information
- * in a dataset and fp struct with active/inactive vectors initialized.
+ * in a dataset and alphOptProblem struct with active/inactive vectors initialized.
 
  *  Required: Everything allocated, active and inactive correct.
  *
 
  */
 {
-  for (int i = 0; i < sp->p; i++) {
-    sp->yHat[i] = ds->y[fp->active[i]];
-    sp->alphaHat[i] = 0.0;    // This is the change from original
-    sp->rHat[i] = fp->gradF[fp->active[i]];
+  for (int i = 0; i < projectedSubProblem->p; i++) {
+    projectedSubProblem->yHat[i] = fullDataset->y[alphOptProblem->active[i]];
+    projectedSubProblem->alphaHat[i] = 0.0;    // This is the change from original
+    projectedSubProblem->rHat[i] = alphOptProblem->gradF[alphOptProblem->active[i]];
   }
 
   if (newRows) {
-    updateSubH(fp, sp, params);
+    updateSubH(alphOptProblem, projectedSubProblem, params);
   }
 }
 
 
-void init_subprob(struct Projected *sp, struct Fullproblem *fp, struct denseData *ds, struct svm_args *params, int newRows)
+void init_subprob(struct Projected *projectedSubProblem, struct Fullproblem *alphOptProblem, struct denseData *fullDataset, struct svm_args *params, int newRows)
 /* Function to initialize the values of the subproblem struct, given information
- * in a dataset and fp struct with active/inactive vectors initialized.
+ * in a dataset and alphOptProblem struct with active/inactive vectors initialized.
 
  *  Required: Everything allocated, active and inactive correct.
  *
 
  */
 {
-  for (int i = 0; i < sp->p; i++) {
-    if(fp->active[i] < ds->procPos){
-			sp->yHat[i] = 1;
+  for (int i = 0; i < projectedSubProblem->p; i++) {
+    if(alphOptProblem->active[i] < fullDataset->procPos){
+			projectedSubProblem->yHat[i] = 1;
     }else{
-			sp->yHat[i] = -1;
+			projectedSubProblem->yHat[i] = -1;
 		}
-    sp->alphaHat[i] = 0.0;    // This is the change from original
-    sp->rHat[i] = fp->gradF[fp->active[i]];
+    projectedSubProblem->alphaHat[i] = 0.0;    // This is the change from original
+    projectedSubProblem->rHat[i] = alphOptProblem->gradF[alphOptProblem->active[i]];
   }
 
   if (newRows) {
-    updateSubH(fp, sp, params);
+    updateSubH(alphOptProblem, projectedSubProblem, params);
   }
 }
 
-int cg(struct Projected *sp, struct Fullproblem *fp)
+int runConjGradient(struct Projected *projectedSubProblem, struct Fullproblem *alphOptProblem)
 /* Conjugate gradient method to solve projected subproblem. */
 {
   double lambda, mu;
-  init_error(sp);
-  double rSq = inner_prod(sp->gamma,sp->gamma,sp->p);
+  initError(projectedSubProblem);
+  double rSq = innerProduct(projectedSubProblem->gamma,projectedSubProblem->gamma,projectedSubProblem->p);
 
   double newRSQ;
   int problem = 0;
@@ -97,38 +97,38 @@ int cg(struct Projected *sp, struct Fullproblem *fp)
     if(its % 1000 == 0){
       printf("rSq is %lf\n",rSq );
     }
-    calc_Hrho(sp);
+    calcHrho(projectedSubProblem);
 
-    if (fabs(inner_prod(sp->Hrho, sp->rho, sp->p)) < 0.00000000000000000000000000001) {
-      printf("%lf\n",inner_prod(sp->Hrho, sp->rho, sp->p) );
-      for (int j = 0; j < fp->p; j++) {
-        printf("act = %d\n",fp->active[j] );
+    if (fabs(innerProduct(projectedSubProblem->Hrho, projectedSubProblem->rho, projectedSubProblem->p)) < 0.00000000000000000000000000001) {
+      printf("%lf\n",innerProduct(projectedSubProblem->Hrho, projectedSubProblem->rho, projectedSubProblem->p) );
+      for (int j = 0; j < alphOptProblem->p; j++) {
+        printf("act = %d\n",alphOptProblem->active[j] );
       }
       exit(250);
     }
-    lambda = rSq/inner_prod(sp->Hrho, sp->rho, sp->p);
-    linearOp(sp->alphaHat, sp->rho, lambda, sp->p);
+    lambda = rSq/innerProduct(projectedSubProblem->Hrho, projectedSubProblem->rho, projectedSubProblem->p);
+    vectorAdditionWithOperandMultiplication(projectedSubProblem->alphaHat, projectedSubProblem->rho, lambda, projectedSubProblem->p);
 
-    problem = checkConstraints(sp, fp);
+    problem = checkConstraints(projectedSubProblem, alphOptProblem);
 
     if(problem){
-      if (problem >= sp->p*2) {
-        linearOp(sp->alphaHat, sp->rho, -lambda, sp->p);
+      if (problem >= projectedSubProblem->p*2) {
+        vectorAdditionWithOperandMultiplication(projectedSubProblem->alphaHat, projectedSubProblem->rho, -lambda, projectedSubProblem->p);
         return problem;
       }
-      else if( problem < -sp->p){
-        linearOp(sp->alphaHat, sp->rho, -lambda, sp->p);
+      else if( problem < -projectedSubProblem->p){
+        vectorAdditionWithOperandMultiplication(projectedSubProblem->alphaHat, projectedSubProblem->rho, -lambda, projectedSubProblem->p);
         return problem;
       }
       return problem;
     }
 
-    updateGamma(sp, lambda);
-    newRSQ = inner_prod(sp->gamma, sp->gamma, sp->p);
+    updateGamma(projectedSubProblem, lambda);
+    newRSQ = innerProduct(projectedSubProblem->gamma, projectedSubProblem->gamma, projectedSubProblem->p);
 
     mu = newRSQ/rSq;
 
-    linearOp2(sp->rho, sp->gamma, mu, sp->p);
+    multiplyVectorThenAddNewVector(projectedSubProblem->rho, projectedSubProblem->gamma, mu, projectedSubProblem->p);
     rSq = newRSQ;
 
   }
@@ -136,146 +136,145 @@ int cg(struct Projected *sp, struct Fullproblem *fp)
   return 0;
 }
 
-void calcYTR(struct Projected *sp, struct Fullproblem *fp)
+void calcYTR(struct Projected *projectedSubProblem, struct Fullproblem *alphOptProblem)
 /* Function to calculate the innter product of the projected*/
 {
-  sp->ytr = 0.0;
+  projectedSubProblem->ytr = 0.0;
 	#pragma omp parallel for
-  for (int i = 0; i < sp->p; i++) {
-    sp->ytr += sp->yHat[i]*fp->gradF[fp->active[i]];
+  for (int i = 0; i < projectedSubProblem->p; i++) {
+    projectedSubProblem->ytr += projectedSubProblem->yHat[i]*alphOptProblem->gradF[alphOptProblem->active[i]];
   }
-  sp->ytr /= (double)(sp->p);
+  projectedSubProblem->ytr /= (double)(projectedSubProblem->p);
 }
 
-void linearOp2(double* vecOut, double* vecIn, double a, int p)
+void multiplyVectorThenAddNewVector(double* vecOut, double* vecIn, double multiplier, int vecLength)
 {
 	#pragma omp parallel for
-  for (int i = 0; i < p; i++) {
-    vecOut[i] *= a;
+  for (int i = 0; i < vecLength; i++) {
+    vecOut[i] *= multiplier;
     vecOut[i] += vecIn[i];
   }
 }
 
-void updateGamma(struct Projected *sp, double lambda)
+void updateGamma(struct Projected *projectedSubProblem, double lambda)
 {
 	#pragma omp parallel for
-  for (int i = 0; i < sp->p; i++) {
-    sp->Hrho[i]*=lambda;
+  for (int i = 0; i < projectedSubProblem->p; i++) {
+    projectedSubProblem->Hrho[i]*=lambda;
   }
 	int j;
 	#pragma omp parallel for private(j)
-  for (int i = 0; i < sp->p; i++) {
-    sp->gamma[i] -= sp->Hrho[i];
-    for (j = 0; j < sp->p; j++) {
-      sp->gamma[i] += sp->yHat[i]*sp->yHat[j]*sp->Hrho[j]/((double)sp->p);
+  for (int i = 0; i < projectedSubProblem->p; i++) {
+    projectedSubProblem->gamma[i] -= projectedSubProblem->Hrho[i];
+    for (j = 0; j < projectedSubProblem->p; j++) {
+      projectedSubProblem->gamma[i] += projectedSubProblem->yHat[i]*projectedSubProblem->yHat[j]*projectedSubProblem->Hrho[j]/((double)projectedSubProblem->p);
     }
   }
 }
 
 
-void linearOp(double* vecOut, double* vecIn, double a, int p)
+void vectorAdditionWithOperandMultiplication(double* vecOut, double* vecIn, double multiplier, int vecLength)
 /* Function to add constant times */
 {
-  for (int i = 0; i < p; i++) {
-    vecOut[i] += a*vecIn[i];
+  for (int i = 0; i < vecLength; i++) {
+    vecOut[i] += multiplier*vecIn[i];
   }
 }
 
-void calc_Hrho(struct Projected *sp)
+void calcHrho(struct Projected *projectedSubProblem)
 /* Function to multiply rho by H */
 {
 	int j;
 	#pragma omp parallel for private(j)
-  for (int i = 0; i < sp->p; i++) {
-    sp->Hrho[i] = 0.0;
+  for (int i = 0; i < projectedSubProblem->p; i++) {
+    projectedSubProblem->Hrho[i] = 0.0;
     for (j = 0; j < i; j++) {
-      sp->Hrho[i] += sp->H[j][i]*sp->rho[j];
+      projectedSubProblem->Hrho[i] += projectedSubProblem->H[j][i]*projectedSubProblem->rho[j];
     }
-    for (j = i; j < sp->p; j++) {
-      sp->Hrho[i] += sp->H[i][j]*sp->rho[j];
+    for (j = i; j < projectedSubProblem->p; j++) {
+      projectedSubProblem->Hrho[i] += projectedSubProblem->H[i][j]*projectedSubProblem->rho[j];
     }
   }
 }
 
 
-
-int checkConstraints(struct Projected* sp, struct Fullproblem *fp)
-/* Function to check if any constrainst have been violated by the cg process. */
+int checkConstraints(struct Projected* projectedSubProblem, struct Fullproblem *alphOptProblem)
+/* Function to check if any constrainst have been violated by the runConjGradient process. */
 {
   int flag = -1;
-  double* temp = (double*)malloc(sizeof(double)*sp->p);
-  constraint_projection(temp, sp->alphaHat, sp->yHat, sp->p);
-  for (int i = 0; i < sp->p; i++) {
-    temp[i] += fp->alpha[ fp->active[i] ];
+  double* temp = (double*)malloc(sizeof(double)*projectedSubProblem->p);
+  constraintProjection(temp, projectedSubProblem->alphaHat, projectedSubProblem->yHat, projectedSubProblem->p);
+  for (int i = 0; i < projectedSubProblem->p; i++) {
+    temp[i] += alphOptProblem->alpha[ alphOptProblem->active[i] ];
   }
-  for (int i = 0; i < sp->p; i++) {
-    if(temp[i]>2*sp->C){
+  for (int i = 0; i < projectedSubProblem->p; i++) {
+    if(temp[i]>2*projectedSubProblem->C){
       flag = i;
-      for (int j = 0; j < sp->p; j++) {
+      for (int j = 0; j < projectedSubProblem->p; j++) {
         if (temp[i] < temp[j]) {
           flag = j;
         }
       }
       free(temp);
-      return flag+sp->p+sp->p;
+      return flag+projectedSubProblem->p+projectedSubProblem->p;
     }
   }
-  for (int i = 0; i < sp->p; i++) {
-    if(temp[i] <= -sp->C){
+  for (int i = 0; i < projectedSubProblem->p; i++) {
+    if(temp[i] <= -projectedSubProblem->C){
       flag = i;
-      for (int j = 0; j < sp->p; j++) {
+      for (int j = 0; j < projectedSubProblem->p; j++) {
         if (temp[i] > temp[j]) {
           flag = j;
         }
       }
       free(temp);
-      return flag-(sp->p+sp->p);
+      return flag-(projectedSubProblem->p+projectedSubProblem->p);
     }
   }
-  for (int i = 0; i < sp->p; i++) {
-    if(temp[i]>sp->C){
+  for (int i = 0; i < projectedSubProblem->p; i++) {
+    if(temp[i]>projectedSubProblem->C){
       free(temp);
-      return i+sp->p;
+      return i+projectedSubProblem->p;
     }
     else if(temp[i]<0.0){
       free(temp);
-      return i-sp->p;
+      return i-projectedSubProblem->p;
     }
   }
   free(temp);
   return 0;
 }
 
-void init_error(struct Projected* sp)
-/* Function to initialize the gamma and rho vectors for cg. */
+void initError(struct Projected* projectedSubProblem)
+/* Function to initialize the gamma and rho vectors for runConjGradient. */
 {
-  constraint_projection(sp->gamma, sp->rHat, sp->yHat, sp->p);
-  copy_vector(sp->rho, sp->gamma, sp->p);
+  constraintProjection(projectedSubProblem->gamma, projectedSubProblem->rHat, projectedSubProblem->yHat, projectedSubProblem->p);
+  copyVector(projectedSubProblem->rho, projectedSubProblem->gamma, projectedSubProblem->p);
 }
 
-void copy_vector(double* a, double* b, int p)
+void copyVector(double* newCopy, double* templateVector, int vecLength)
 {
-  for (int i = 0; i < p; i++) {
-    a[i] = b[i];
+  for (int i = 0; i < vecLength; i++) {
+    newCopy[i] = templateVector[i];
   }
 }
 
-void constraint_projection(double* vecOut, double* vecIn, int* y, int p)
+void constraintProjection(double* vecOut, double* vecIn, int* yVec, int vecLength)
 {
 	int j;
 	#pragma omp parallel for private(j)
-  for (int i = 0; i < p; i++) {
+  for (int i = 0; i < vecLength; i++) {
     vecOut[i] = vecIn[i];
-    for (j = 0; j < p; j++) {
-vecOut[i] -= vecIn[j]*((y[i]*y[j])/((double)p));
+    for (j = 0; j < vecLength; j++) {
+      vecOut[i] -= vecIn[j]*((yVec[i]*yVec[j])/((double)vecLength));
     }
   }
 }
 
-double inner_prod(double *a, double *b, int p)
+double innerProduct(double *a, double *b, int vectorLength)
 {
   double val = 0.0;
-  for (int i = 0; i < p; i++) {
+  for (int i = 0; i < vectorLength; i++) {
     val+=a[i]*b[i];
   }
   return val;
@@ -283,17 +282,17 @@ double inner_prod(double *a, double *b, int p)
 
 
 
-void   freeSubProblem( struct Projected* sp)
+void   freeSubProblem( struct Projected* projectedSubProblem)
 /* Function to free dynamically allocated memory in subproblem stuct. */
 {
-  free(sp->alphaHat);
-  free(sp->yHat);
-  free(sp->rHat);
-  free(sp->H);
+  free(projectedSubProblem->alphaHat);
+  free(projectedSubProblem->yHat);
+  free(projectedSubProblem->rHat);
+  free(projectedSubProblem->H);
 
-  free(sp->gamma);
-  free(sp->rho);
-  free(sp->Hrho);
+  free(projectedSubProblem->gamma);
+  free(projectedSubProblem->rho);
+  free(projectedSubProblem->Hrho);
 
-  free(sp->h);
+  free(projectedSubProblem->h);
 }

@@ -7,24 +7,27 @@
  *
  *      Purpouse:   To manage the top level running of the serial algorithm.
  *
- *      Usage:      Call run_algorithm() to completely train an SVM.
+ *      Usage:      Call runAlgorithm() to completely train an SVM.
  *
  */
 
 
-int run_algorithm(struct denseData *ds, struct Fullproblem *fp, struct Projected *sp)
+int runAlgorithm(struct denseData *fullDataset, struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem)
 /*  Function to run the full serial algorithm for svm training using the
  *  conjugate gradient method.
  */
 
 {
-  // Full problem allocated and filled in, all alpha = 0.0 all gradF = 1.0:
   int p = 6;
-  alloc_prob(fp, ds, p);
-  init_prob(fp, ds);
+
+  // Full problem allocated and 
+  allocProb(alphOptProblem, fullDataset, p);
+
+  // alpha = 0.0, gradF = 1.0:
+  initProb(alphOptProblem, fullDataset);
 
   // Subproblem allocated:
-  alloc_subprob(sp, p);
+  allocProjectedProblem(projectedSubProblem, p);
 
   // We loop until no negative entries in beta:
   int k = 1;
@@ -32,7 +35,7 @@ int run_algorithm(struct denseData *ds, struct Fullproblem *fp, struct Projected
   int itt = 0;
   int n = 0;
 
- // setH(&fp, &ds, &parameters);
+ // setH(&alphOptProblem, &fullDataset, &parameters);
 
   while(k){
     // H matrix columns re-set and subproblem changed
@@ -40,25 +43,25 @@ int run_algorithm(struct denseData *ds, struct Fullproblem *fp, struct Projected
       printf("itt = %d\n",itt );
     }
 
-    init_subprob(sp, fp, ds, &parameters, 1);
+    initSubprob(projectedSubProblem, alphOptProblem, fullDataset, &parameters, 1);
 
     //  congjugate gradient algorithm
     //  if algorithm completes n == 0
     //  if algorithm interrupt n != 0
-    n = cg(sp, fp);
+    n = runConjGradient(projectedSubProblem, alphOptProblem);
 
-    updateAlphaR(fp, sp);
-    calcYTR(sp, fp);
-    calculateBeta(fp, sp, ds);
+    updateAlphaR(alphOptProblem, projectedSubProblem);
+    calcYTR(projectedSubProblem, alphOptProblem);
+    calculateBeta(alphOptProblem, projectedSubProblem, fullDataset);
 
     if (n==0) {
-      // Successful completion of the cg algorithm:
+      // Successful completion of the runConjGradient algorithm:
       // If elements with beta<0 add them to problem.
       // Else algorithm has completed.
       int add = 2;
       int *temp = malloc(sizeof(int)*add);
       int *temp2 = malloc(sizeof(int)*add);
-      add = findWorstAdd(fp,add,temp,temp2);
+      add = findWorstAdd(alphOptProblem,add,temp,temp2);
 
       if (add == 0){
         free(temp);
@@ -67,8 +70,8 @@ int run_algorithm(struct denseData *ds, struct Fullproblem *fp, struct Projected
       }
 
       // Problem reallocated and full problem re-inited.
-      changeP(fp, sp, add);
-      reinitprob(ds, fp, sp, add, temp, temp2);
+      changeP(alphOptProblem, projectedSubProblem, add);
+      reinitprob(fullDataset, alphOptProblem, projectedSubProblem, add, temp, temp2);
 
       free(temp);
       free(temp2);
@@ -76,19 +79,19 @@ int run_algorithm(struct denseData *ds, struct Fullproblem *fp, struct Projected
 
     if (n) {
       // BCs broken. If possible swap, otherwise shrink problem size.
-      k = singleswap(ds, fp, sp, n, &parameters);
+      k = singleswap(fullDataset, alphOptProblem, projectedSubProblem, n, &parameters);
       if (k < 0) {
-        shrinkSize(fp, sp, k+fp->p);
+        shrinkSize(alphOptProblem, projectedSubProblem, k+alphOptProblem->projectedProblemSize);
       }
       else{
-        n = checkfpConstraints(fp);
+        n = checkfpConstraints(alphOptProblem);
       }
     }
 
     //If we reach max_iters without convergence, report the error.
     itt++;
     if(itt == max_iters){
-      fprintf(stderr, "algorithm.c run_algorithm(): maximum iterations (%d) with no convergence.\n",itt );
+      fprintf(stderr, "algorithm.c runAlgorithm(): maximum iterations (%d) with no convergence.\n",itt );
       return 1;
     }
 
@@ -97,9 +100,9 @@ int run_algorithm(struct denseData *ds, struct Fullproblem *fp, struct Projected
 }
 
 
-void freeDenseData(struct denseData *ds)
+void freeDenseData(struct denseData *fullDataset)
 /* Function to free dynamically allocated memory in dense data set struct. */
 {
-  free(ds->data);
-  free(ds->data1d);
+  free(fullDataset->data);
+  free(fullDataset->data1d);
 }

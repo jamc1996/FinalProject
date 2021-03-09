@@ -25,19 +25,19 @@
 #define WHT   "\x1B[37m"
 #define RESET "\x1B[0m"
 
-void testSavedModel(struct denseData *ds, char* fn);
-void saveTrainedModel(struct Fullproblem *fp, struct denseData *ds, double ytr);
-void read_file(char* const filename, struct denseData* ds);
+void testSavedModel(struct denseData *fullDataset, char* fn);
+void saveTrainedModel(struct Fullproblem *alphOptProblem, struct denseData *fullDataset, double ytr);
+void readFile(char* const filename, struct denseData* fullDataset);
 int readline(FILE *input, char **line);
-void count_entries(FILE *input, struct denseData* ds);
-int parse_arguments(int argc, char *argv[], char** filename);
-void preprocess(struct denseData *ds);
-void calcMeans(double *mean, struct denseData *ds);
-void normalise(double* mean, double* stdDev, struct denseData* ds);
-void calcStdDev(double* stdDev, double* mean, struct denseData *ds);
-struct svmModel createFittedModel(double *w, int kernel, int trainElapsedTime, struct denseData *ds, struct Fullproblem *fp, double ytr);
-void setUpDense(struct denseData *ds, double** trainData, int nFeatures, int nInstances, int nPos);
+void count_entries(FILE *input, struct denseData* fullDataset);
+int parseArguments(int argc, char *argv[], char** filename);
+void preprocess(struct denseData *fullDataset);
+void calcMeans(double *mean, struct denseData *fullDataset);
+void normalise(double* mean, double* stdDev, struct denseData* fullDataset);
+void calcStdDev(double* stdDev, double* mean, struct denseData *fullDataset);
+struct svmModel createFittedModel(double *w, int kernel, int trainElapsedTime, struct denseData *fullDataset, struct Fullproblem *alphOptProblem, double ytr);
+void setUpDense(struct denseData *fullDataset, double** trainData, int nFeatures, int nInstances, int nPos);
 void change_params(struct svm_args *parameters);
-void saveTrainedModel2(struct Fullproblem *fp, struct denseData *ds, double ytr, const char* fileName);
+void saveTrainedModel2(struct Fullproblem *alphOptProblem, struct denseData *fullDataset, double ytr, const char* fileName);
 
 #endif

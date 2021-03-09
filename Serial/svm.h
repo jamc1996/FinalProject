@@ -70,12 +70,12 @@ typedef struct Projected{
 	double C;
 	double* h;
 	double ytr;
-}Subproblem;
+} Subproblem;
 
 // Full problem struct for everything to be solved by the algorithm.
 typedef struct Fullproblem{
-	int n;
-	int p;
+	int totalProblemSize;
+	int projectedProblemSize;
 	int q;
 
 	double C;

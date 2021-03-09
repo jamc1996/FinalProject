@@ -16,7 +16,7 @@
  *
  */
 
-int run_algorithm(struct denseData *ds, struct Fullproblem *fp, struct Projected *sp);
-void freeDenseData(struct denseData *ds);
+int runAlgorithm(struct denseData *fullDataset, struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem);
+void freeDenseData(struct denseData *fullDataset);
 
 #endif

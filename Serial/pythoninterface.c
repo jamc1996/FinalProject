@@ -19,15 +19,15 @@ struct svmModel fit(
 Returns time spent training in c.
 */
 {
-  struct denseData ds;
-  struct Fullproblem fp;
-  struct Projected sp;
+  struct denseData fullDataset;
+  struct Fullproblem alphOptProblem;
+  struct Projected projectedSubProblem;
   struct timeval trainStart, trainEnd;
   int kernel = LINEAR;
   change_params(&parameters);
   gettimeofday(&trainStart, 0);
-  setUpDense(&ds, trainData, nFeatures, nInstances, nPos);
-  run_algorithm(&ds, &fp, &sp);
+  setUpDense(&fullDataset, trainData, nFeatures, nInstances, nPos);
+  runAlgorithm(&fullDataset, &alphOptProblem, &projectedSubProblem);
   gettimeofday(&trainEnd, 0);
 
   long trainElapsedTime = (trainEnd.tv_sec-trainStart.tv_sec)*1000000 + trainEnd.tv_usec-trainStart.tv_usec;
@@ -35,21 +35,21 @@ Returns time spent training in c.
 
   //Model saved to a txt file.
   if (saveToFile) {
-    saveTrainedModel2(&fp, &ds, sp.ytr, fileName);
+    saveTrainedModel2(&alphOptProblem, &fullDataset, projectedSubProblem.ytr, fileName);
   }
 
   struct svmModel fittedModel = createFittedModel(
     decisionVectorToFill,
     kernel,
     trainElapsedTime,
-    &ds,
-    &fp,
-    sp.ytr
+    &fullDataset,
+    &alphOptProblem,
+    projectedSubProblem.ytr
   );
 
   // //Memory freed and program exits
-  freeFullproblem(&fp);
-  freeSubProblem(&sp);
+  freeFullproblem(&alphOptProblem);
+  freeSubProblem(&projectedSubProblem);
 
   return fittedModel;
 }

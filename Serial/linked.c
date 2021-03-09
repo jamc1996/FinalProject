@@ -67,22 +67,22 @@ List Init_Empty_List()
 }
 
 
-List append(struct denseData *ds, List l, int n)
+List append(struct denseData *fullDataset, List l, int n)
 /* Function to append a linked list with a new line. */
 {
   // Check if l.head, l.tail have words:
   if (l.head->line == NULL)
   {
     l.head->label = n;
-    l.head->line = malloc(sizeof(double)*ds->nInstances);
-    appendUpdate(ds,l.head->line,n);
+    l.head->line = malloc(sizeof(double)*fullDataset->nInstances);
+    appendUpdate(fullDataset,l.head->line,n);
     return l;
   }
   if (l.tail->line == NULL)
   {
     l.tail->label = n;
-    l.tail->line = malloc(sizeof(double)*ds->nInstances);
-    appendUpdate(ds,l.tail->line,n);
+    l.tail->line = malloc(sizeof(double)*fullDataset->nInstances);
+    appendUpdate(fullDataset,l.tail->line,n);
     return l;
   }
 
@@ -90,9 +90,9 @@ List append(struct denseData *ds, List l, int n)
   Create a new cell and arrange it after tail: */
 
   Cell *new = malloc(sizeof(Cell));
-  new->line = malloc(sizeof(double)*ds->nInstances);
+  new->line = malloc(sizeof(double)*fullDataset->nInstances);
   new->label = n;
-  appendUpdate(ds,new->line,n);
+  appendUpdate(fullDataset,new->line,n);
   new->prev = l.tail;
   l.tail->next = new;
   new->next = NULL;

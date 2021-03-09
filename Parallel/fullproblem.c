@@ -13,11 +13,11 @@
  *
  */
 
-void alloc_prob(struct Fullproblem *prob, struct denseData *ds, int p)
+void allocProb(struct Fullproblem *prob, struct denseData *fullDataset, int p)
 /* Function to allocate space necessary for a full problem of size n,
  * that will be projected to size p.  */
 {
-  prob->n = ds->procInstances;
+  prob->n = fullDataset->procInstances;
   prob->p = p;
   prob->q = prob->n-prob->p;
   prob->C = 100.0;
@@ -34,7 +34,7 @@ void alloc_prob(struct Fullproblem *prob, struct denseData *ds, int p)
 
 
 
-void init_prob(struct Fullproblem *prob, struct denseData *ds)
+void initProb(struct Fullproblem *prob, struct denseData *fullDataset)
 /* Function to initialize values for full problem of size n,
  * that will be projected to size p.  */
 {
@@ -46,149 +46,149 @@ void init_prob(struct Fullproblem *prob, struct denseData *ds)
     prob->active[i] = i;
   }
   for (int i = 0; i < prob->p/2; i++) {
-    prob->active[i+prob->p/2] = ds->procPos + i;
+    prob->active[i+prob->p/2] = fullDataset->procPos + i;
   }
 
   if (prob->p%2 != 0) {
-    prob->active[prob->p-1] = ds->procPos+ prob->p/2;
-    for (int i = prob->p/2; i < ds->procPos; i++) {
+    prob->active[prob->p-1] = fullDataset->procPos+ prob->p/2;
+    for (int i = prob->p/2; i < fullDataset->procPos; i++) {
       prob->inactive[i-(prob->p/2)] = i;
     }
-    for (int i = 1+(prob->p/2); i < ds->procNeg; i++) {
-      prob->inactive[ds->procPos+i-(prob->p)] = ds->procPos + i;
+    for (int i = 1+(prob->p/2); i < fullDataset->procNeg; i++) {
+      prob->inactive[fullDataset->procPos+i-(prob->p)] = fullDataset->procPos + i;
     }
   }
   else{
-    for (int i = prob->p/2; i < ds->procPos; i++) {
+    for (int i = prob->p/2; i < fullDataset->procPos; i++) {
       prob->inactive[i-(prob->p/2)] = i;
     }
-    for (int i = prob->p/2; i < ds->procNeg; i++) {
-      prob->inactive[ds->procPos-(prob->p)+i] = ds->procPos + i;
+    for (int i = prob->p/2; i < fullDataset->procNeg; i++) {
+      prob->inactive[fullDataset->procPos-(prob->p)+i] = fullDataset->procPos + i;
     }
   }
 
   for (int i = 0; i < prob->p; i++) {
-    prob->partialH = append(ds,prob->partialH,prob->active[i]);
+    prob->partialH = append(fullDataset,prob->partialH,prob->active[i]);
 	}
 }
 
 
-void updateAlphaR(struct Fullproblem *fp, struct Projected *sp)
-/* Function to update the values of the alpha, r vectors after a cg sweep*/
+void updateAlphaR(struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem)
+/* Function to update the values of the alpha, r vectors after a runConjGradient sweep*/
 {
   // Use rho as temporary place to store P*alpha:
   int j;
   #pragma omp parallel for private(j)
-  for (int i = 0; i < sp->p; i++) {
-    sp->rho[i] = sp->alphaHat[i];
-    for (j = 0; j < sp->p; j++) {
-      sp->rho[i] -= ((sp->yHat[i]*sp->yHat[j])/((double)(sp->p)))*sp->alphaHat[j];
+  for (int i = 0; i < projectedSubProblem->p; i++) {
+    projectedSubProblem->rho[i] = projectedSubProblem->alphaHat[i];
+    for (j = 0; j < projectedSubProblem->p; j++) {
+      projectedSubProblem->rho[i] -= ((projectedSubProblem->yHat[i]*projectedSubProblem->yHat[j])/((double)(projectedSubProblem->p)))*projectedSubProblem->alphaHat[j];
     }
   }
   // Alpha of each active point is updated:
-  for (int i = 0; i < sp->p; i++) {
-    fp->alpha[fp->active[i]] += sp->rho[i];
+  for (int i = 0; i < projectedSubProblem->p; i++) {
+    alphOptProblem->alpha[alphOptProblem->active[i]] += projectedSubProblem->rho[i];
   }
 
   // gradF of each inactive point is updated:
-  fp->partialH.head->prev = fp->partialH.head;
+  alphOptProblem->partialH.head->prev = alphOptProblem->partialH.head;
   int i = 0;
-  while (fp->partialH.head->prev != NULL) {
+  while (alphOptProblem->partialH.head->prev != NULL) {
     #pragma omp parallel for
-    for ( j = 0; j < fp->q; j++) {
-      fp->gradF[fp->inactive[j]] -= fp->partialH.head->prev->line[fp->inactive[j]] * sp->rho[i];
+    for ( j = 0; j < alphOptProblem->q; j++) {
+      alphOptProblem->gradF[alphOptProblem->inactive[j]] -= alphOptProblem->partialH.head->prev->line[alphOptProblem->inactive[j]] * projectedSubProblem->rho[i];
     }
     i++;
-    fp->partialH.head->prev = fp->partialH.head->prev->next;
+    alphOptProblem->partialH.head->prev = alphOptProblem->partialH.head->prev->next;
   }
 
   // gradF of each active point is updated:
-  for (int i = 0; i < fp->p; i++) {
+  for (int i = 0; i < alphOptProblem->p; i++) {
     for ( j = 0; j < i; j++) {
-      fp->gradF[fp->active[i]] -= sp->H[j][i]*sp->rho[j];
+      alphOptProblem->gradF[alphOptProblem->active[i]] -= projectedSubProblem->H[j][i]*projectedSubProblem->rho[j];
     }
-    for ( j = i; j < fp->p; j++) {
-      fp->gradF[fp->active[i]] -= sp->H[i][j]*sp->rho[j];
+    for ( j = i; j < alphOptProblem->p; j++) {
+      alphOptProblem->gradF[alphOptProblem->active[i]] -= projectedSubProblem->H[i][j]*projectedSubProblem->rho[j];
     }
   }
 }
 
-void YcalculateBeta(struct Fullproblem *fp, struct Projected *sp, struct yDenseData *ds)
+void YcalculateBeta(struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, struct yDenseData *fullDataset)
 /* Function to calculate the beta vector - tracks how suboptimal the values for*/
 {
 	#pragma omp parallel for
-	for (int i = 0; i < fp->q; i++) {
-		if (fp->alpha[fp->inactive[i]] < 0.0000000001) {
-			fp->beta[i] =  - fp->gradF[fp->inactive[i]] +(ds->y[fp->inactive[i]])*(sp->ytr);
+	for (int i = 0; i < alphOptProblem->q; i++) {
+		if (alphOptProblem->alpha[alphOptProblem->inactive[i]] < 0.0000000001) {
+			alphOptProblem->beta[i] =  - alphOptProblem->gradF[alphOptProblem->inactive[i]] +(fullDataset->y[alphOptProblem->inactive[i]])*(projectedSubProblem->ytr);
 		}
-		else if (fp->alpha[fp->inactive[i]] >= sp->C - 0.001) {
-	      		fp->beta[i] =  fp->gradF[fp->inactive[i]] - (ds->y[fp->inactive[i]])*(sp->ytr);
+		else if (alphOptProblem->alpha[alphOptProblem->inactive[i]] >= projectedSubProblem->C - 0.001) {
+	      		alphOptProblem->beta[i] =  alphOptProblem->gradF[alphOptProblem->inactive[i]] - (fullDataset->y[alphOptProblem->inactive[i]])*(projectedSubProblem->ytr);
 		}
 	}
 
 }
 
 
-void calculateBeta(struct Fullproblem *fp, struct Projected *sp, struct denseData *ds)
+void calculateBeta(struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, struct denseData *fullDataset)
 /* Function to calculate the beta vector - tracks how suboptimal the values for*/
 {
 	#pragma omp parallel for
-	for (int i = 0; i < fp->q; i++) {
-		if (fp->alpha[fp->inactive[i]] < 0.0000000001) {
-			if(fp->inactive[i] < ds->procPos) {
-				fp->beta[i] =  - fp->gradF[fp->inactive[i]] + (sp->ytr);
+	for (int i = 0; i < alphOptProblem->q; i++) {
+		if (alphOptProblem->alpha[alphOptProblem->inactive[i]] < 0.0000000001) {
+			if(alphOptProblem->inactive[i] < fullDataset->procPos) {
+				alphOptProblem->beta[i] =  - alphOptProblem->gradF[alphOptProblem->inactive[i]] + (projectedSubProblem->ytr);
  			}else{
-				fp->beta[i] =  - fp->gradF[fp->inactive[i]] - (sp->ytr);
+				alphOptProblem->beta[i] =  - alphOptProblem->gradF[alphOptProblem->inactive[i]] - (projectedSubProblem->ytr);
 			}
 		}
-		else if (fp->alpha[fp->inactive[i]] >= sp->C - 0.001) {
-			if(fp->inactive[i] < ds->procPos){
-	      			fp->beta[i] =  fp->gradF[fp->inactive[i]] - (sp->ytr);
+		else if (alphOptProblem->alpha[alphOptProblem->inactive[i]] >= projectedSubProblem->C - 0.001) {
+			if(alphOptProblem->inactive[i] < fullDataset->procPos){
+	      			alphOptProblem->beta[i] =  alphOptProblem->gradF[alphOptProblem->inactive[i]] - (projectedSubProblem->ytr);
   	  		}else{
-	      			fp->beta[i] =  fp->gradF[fp->inactive[i]] + (sp->ytr);
+	      			alphOptProblem->beta[i] =  alphOptProblem->gradF[alphOptProblem->inactive[i]] + (projectedSubProblem->ytr);
 			}
 		}
 	}
 
 }
 
-void YfindWorst(int *worst, int* target, int* change, int *n, struct yDenseData *ds, struct Fullproblem *fp)
+void YfindWorst(int *worst, int* target, int* change, int *n, struct yDenseData *fullDataset, struct Fullproblem *alphOptProblem)
 /* Function to find the worst beta value of possible choices. */
 {
   double tester = DBL_MAX;
 
   if (*n > 0) {
     (*change) = 1;
-    *n -= fp->p;
-    if(*n >= fp->p){
-      *n -= fp->p;
+    *n -= alphOptProblem->p;
+    if(*n >= alphOptProblem->p){
+      *n -= alphOptProblem->p;
       (*change) = -1;
     }
   }
   else {
     (*change) = -1;
-    *n+=fp->p;
+    *n+=alphOptProblem->p;
     if(*n < 0){
-      *n += fp->p;
+      *n += alphOptProblem->p;
       (*change) = 1;
     }
   }
-  (*target) = (*change)*ds->y[fp->active[(*n)]];
+  (*target) = (*change)*fullDataset->y[alphOptProblem->active[(*n)]];
 
-	for (int i = 0; i < fp->q; i++) {
-		if( (ds->y[fp->inactive[i]] == *target)){
-			if (fp->beta[i] < tester) {
-				if (fp->alpha[fp->inactive[i]] < fp->C*0.8){
+	for (int i = 0; i < alphOptProblem->q; i++) {
+		if( (fullDataset->y[alphOptProblem->inactive[i]] == *target)){
+			if (alphOptProblem->beta[i] < tester) {
+				if (alphOptProblem->alpha[alphOptProblem->inactive[i]] < alphOptProblem->C*0.8){
 					*worst = i;
-					tester = fp->beta[i];
+					tester = alphOptProblem->beta[i];
 				}
 			}
 		}
 		else{
-			if (fp->beta[i] < tester) {
-        			if (fp->alpha[fp->inactive[i]] > 0.1){
+			if (alphOptProblem->beta[i] < tester) {
+        			if (alphOptProblem->alpha[alphOptProblem->inactive[i]] > 0.1){
 					*worst = i;
-					tester = fp->beta[i];
+					tester = alphOptProblem->beta[i];
 				}
 			}
 		}
@@ -199,48 +199,48 @@ void YfindWorst(int *worst, int* target, int* change, int *n, struct yDenseData 
 }
 
 
-void findWorst(int *worst, int* target, int* change, int *n, struct denseData *ds, struct Fullproblem *fp)
+void findWorst(int *worst, int* target, int* change, int *n, struct denseData *fullDataset, struct Fullproblem *alphOptProblem)
 /* Function to find the worst beta value of possible choices. */
 {
   double tester = DBL_MAX;
 
   if (*n > 0) {
     (*change) = 1;
-    *n -= fp->p;
-    if(*n >= fp->p){
-      *n -= fp->p;
+    *n -= alphOptProblem->p;
+    if(*n >= alphOptProblem->p){
+      *n -= alphOptProblem->p;
       (*change) = -1;
     }
   }
   else {
     (*change) = -1;
-    *n+=fp->p;
+    *n+=alphOptProblem->p;
     if(*n < 0){
-      *n += fp->p;
+      *n += alphOptProblem->p;
       (*change) = 1;
     }
   }
-	if(fp->active[*n] < ds->procPos){
+	if(alphOptProblem->active[*n] < fullDataset->procPos){
 		*target = (*change);
 	}
 	else{
 		*target = -(*change);
 	}
 
-	for (int i = 0; i < fp->q; i++) {
-		if( (fp->inactive[i] < ds->procPos && *target == 1) || (ds->procPos <= fp->inactive[i] && *target == -1) ) {
-			if (fp->beta[i] < tester) {
-				if (fp->alpha[fp->inactive[i]] < fp->C*0.8){
+	for (int i = 0; i < alphOptProblem->q; i++) {
+		if( (alphOptProblem->inactive[i] < fullDataset->procPos && *target == 1) || (fullDataset->procPos <= alphOptProblem->inactive[i] && *target == -1) ) {
+			if (alphOptProblem->beta[i] < tester) {
+				if (alphOptProblem->alpha[alphOptProblem->inactive[i]] < alphOptProblem->C*0.8){
 					*worst = i;
-					tester = fp->beta[i];
+					tester = alphOptProblem->beta[i];
 				}
 			}
 		}
 		else{
-			if (fp->beta[i] < tester) {
-        			if (fp->alpha[fp->inactive[i]] > 0.1){
+			if (alphOptProblem->beta[i] < tester) {
+        			if (alphOptProblem->alpha[alphOptProblem->inactive[i]] > 0.1){
 					*worst = i;
-					tester = fp->beta[i];
+					tester = alphOptProblem->beta[i];
 				}
 			}
 		}
@@ -250,20 +250,20 @@ void findWorst(int *worst, int* target, int* change, int *n, struct denseData *d
 	}
 }
 
-void spreadChange(struct Fullproblem *fp, struct Projected *sp, int target, double diff, int change, int n)
+void spreadChange(struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, int target, double diff, int change, int n)
 {
   //Change inactive gradF due to changes in alpha[active != n]
-  Cell *temp = fp->partialH.head;
+  Cell *temp = alphOptProblem->partialH.head;
   int i = 0;
   while (temp != NULL) {
     #pragma omp parallel for
-    for (int j = 0; j < fp->q; j++) {
-      if (temp->label != fp->active[n]) {
-        if (sp->yHat[i] == target){
-          fp->gradF[fp->inactive[j]] -= temp->line[fp->inactive[j]]*diff/(double)(fp->p-1);
+    for (int j = 0; j < alphOptProblem->q; j++) {
+      if (temp->label != alphOptProblem->active[n]) {
+        if (projectedSubProblem->yHat[i] == target){
+          alphOptProblem->gradF[alphOptProblem->inactive[j]] -= temp->line[alphOptProblem->inactive[j]]*diff/(double)(alphOptProblem->p-1);
         }
         else{
-          fp->gradF[fp->inactive[j]] += temp->line[fp->inactive[j]]*diff/(double)(fp->p-1);
+          alphOptProblem->gradF[alphOptProblem->inactive[j]] += temp->line[alphOptProblem->inactive[j]]*diff/(double)(alphOptProblem->p-1);
         }
       }
     }
@@ -272,58 +272,58 @@ void spreadChange(struct Fullproblem *fp, struct Projected *sp, int target, doub
   }
   int j;
   // Change active gradF due to changes in alpha[active != n]
-  for (int i = 0; i < fp->p; i++) {
-    for ( j = 0; j < fp->p; j++) {
+  for (int i = 0; i < alphOptProblem->p; i++) {
+    for ( j = 0; j < alphOptProblem->p; j++) {
       if (j != n) {
-        if (sp->yHat[j] == target){
+        if (projectedSubProblem->yHat[j] == target){
           if (i<j) {
-            fp->gradF[fp->active[i]] -= sp->H[i][j]*diff/(double)(fp->p-1);
+            alphOptProblem->gradF[alphOptProblem->active[i]] -= projectedSubProblem->H[i][j]*diff/(double)(alphOptProblem->p-1);
           }
           else{
-            fp->gradF[fp->active[i]] -= sp->H[j][i]*diff/(double)(fp->p-1);
+            alphOptProblem->gradF[alphOptProblem->active[i]] -= projectedSubProblem->H[j][i]*diff/(double)(alphOptProblem->p-1);
           }
         }
         else{
           if (i<j) {
-            fp->gradF[fp->active[i]] += sp->H[i][j]*diff/(double)(fp->p-1);
+            alphOptProblem->gradF[alphOptProblem->active[i]] += projectedSubProblem->H[i][j]*diff/(double)(alphOptProblem->p-1);
           }
           else{
-            fp->gradF[fp->active[i]] += sp->H[j][i]*diff/(double)(fp->p-1);
+            alphOptProblem->gradF[alphOptProblem->active[i]] += projectedSubProblem->H[j][i]*diff/(double)(alphOptProblem->p-1);
           }
         }
       }
     }
   }
-  double* nline = findListLine(fp->partialH,fp->active[n]);
+  double* nline = findListLine(alphOptProblem->partialH,alphOptProblem->active[n]);
   // Changes due to change in alpha[active == n]
   #pragma omp parallel for
-  for (int i = 0; i < fp->q; i++) {
-    fp->gradF[fp->inactive[i]] += nline[fp->inactive[i]]*diff*change;
+  for (int i = 0; i < alphOptProblem->q; i++) {
+    alphOptProblem->gradF[alphOptProblem->inactive[i]] += nline[alphOptProblem->inactive[i]]*diff*change;
   }
-  for (int i = 0; i < fp->p; i++) {
+  for (int i = 0; i < alphOptProblem->p; i++) {
     if(i<n){
-      fp->gradF[fp->active[i]] += sp->H[i][n]*diff*change;
+      alphOptProblem->gradF[alphOptProblem->active[i]] += projectedSubProblem->H[i][n]*diff*change;
     }
     else{
-      fp->gradF[fp->active[i]] += sp->H[n][i]*diff*change;
+      alphOptProblem->gradF[alphOptProblem->active[i]] += projectedSubProblem->H[n][i]*diff*change;
     }
   }
 
   // Minor alpha changes
-  for (int j = 0; j < fp->p; j++) {
+  for (int j = 0; j < alphOptProblem->p; j++) {
     if (j != n) {
-      if (sp->yHat[j] == target){
-        fp->alpha[fp->active[j]] += diff/(double)(fp->p-1);
+      if (projectedSubProblem->yHat[j] == target){
+        alphOptProblem->alpha[alphOptProblem->active[j]] += diff/(double)(alphOptProblem->p-1);
       }
       else{
-        fp->alpha[fp->active[j]] -= diff/(double)(fp->p-1);
+        alphOptProblem->alpha[alphOptProblem->active[j]] -= diff/(double)(alphOptProblem->p-1);
       }
     }
   }
 }
 
 
-int Ysingleswap(struct yDenseData *ds, struct Fullproblem *fp, struct Projected *sp, int n, struct svm_args *params)
+int Ysingleswap(struct yDenseData *fullDataset, struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, int n, struct svm_args *params)
 /* Function to swap out a single element from the active set. */
 {
   int flag = 0;
@@ -335,67 +335,67 @@ int Ysingleswap(struct yDenseData *ds, struct Fullproblem *fp, struct Projected 
   int target, change=1;
 
 
-  YfindWorst(&worst,&target,&change,&n, ds, fp);
+  YfindWorst(&worst,&target,&change,&n, fullDataset, alphOptProblem);
 
   double diff;
   if (flag == 1) {
-    diff = change*(fp->alpha[fp->active[n]] - fp->C)  ;
+    diff = change*(alphOptProblem->alpha[alphOptProblem->active[n]] - alphOptProblem->C)  ;
   }
   else{
-    diff = change*fp->alpha[fp->active[n]];
+    diff = change*alphOptProblem->alpha[alphOptProblem->active[n]];
   }
 
   if( worst < 0)
   {
-    spreadChange(fp, sp, target, diff, change, n);
+    spreadChange(alphOptProblem, projectedSubProblem, target, diff, change, n);
 
     if (flag) {
-      fp->alpha[fp->active[n]] = fp->C;
+      alphOptProblem->alpha[alphOptProblem->active[n]] = alphOptProblem->C;
     }
     else{
-      fp->alpha[fp->active[n]] = 0;
+      alphOptProblem->alpha[alphOptProblem->active[n]] = 0;
     }
 
-    return n - fp->p;
+    return n - alphOptProblem->p;
   }
 
-  int temp = fp->active[n];
+  int temp = alphOptProblem->active[n];
   if (flag)
   {
- if ( (ds->y[fp->inactive[worst]] == target)){
-      YadjustGradF(fp, ds, sp, n, worst, change, 1, flag, params, diff);
-      fp->alpha[fp->inactive[worst]] += diff;
-      fp->alpha[fp->active[n]] = sp->C;
-      fp->active[n] = fp->inactive[worst];
-      fp->inactive[worst] = temp;
-      fp->beta[worst] = DBL_MAX;
+ if ( (fullDataset->y[alphOptProblem->inactive[worst]] == target)){
+      YadjustGradF(alphOptProblem, fullDataset, projectedSubProblem, n, worst, change, 1, flag, params, diff);
+      alphOptProblem->alpha[alphOptProblem->inactive[worst]] += diff;
+      alphOptProblem->alpha[alphOptProblem->active[n]] = projectedSubProblem->C;
+      alphOptProblem->active[n] = alphOptProblem->inactive[worst];
+      alphOptProblem->inactive[worst] = temp;
+      alphOptProblem->beta[worst] = DBL_MAX;
     }
     else{
-      YadjustGradF(fp, ds, sp, n, worst, change, 0, flag, params, diff);
-      fp->alpha[fp->inactive[worst]] -= diff;
-      fp->alpha[fp->active[n]] = sp->C;
-      fp->active[n] = fp->inactive[worst];
-      fp->inactive[worst] = temp;
-      fp->beta[worst] = DBL_MAX;
+      YadjustGradF(alphOptProblem, fullDataset, projectedSubProblem, n, worst, change, 0, flag, params, diff);
+      alphOptProblem->alpha[alphOptProblem->inactive[worst]] -= diff;
+      alphOptProblem->alpha[alphOptProblem->active[n]] = projectedSubProblem->C;
+      alphOptProblem->active[n] = alphOptProblem->inactive[worst];
+      alphOptProblem->inactive[worst] = temp;
+      alphOptProblem->beta[worst] = DBL_MAX;
     }
   }
   else
   {
- if ( ds->y[fp->inactive[worst]] == target){
-      YadjustGradF(fp, ds, sp, n, worst, change, 1, flag, params, diff);
-      fp->alpha[fp->inactive[worst]] += diff;
-      fp->alpha[fp->active[n]] = 0.0;//sp->C ;
-      fp->active[n] = fp->inactive[worst];
-      fp->inactive[worst] = temp;
-      fp->beta[worst] = DBL_MAX-1.0;
+ if ( fullDataset->y[alphOptProblem->inactive[worst]] == target){
+      YadjustGradF(alphOptProblem, fullDataset, projectedSubProblem, n, worst, change, 1, flag, params, diff);
+      alphOptProblem->alpha[alphOptProblem->inactive[worst]] += diff;
+      alphOptProblem->alpha[alphOptProblem->active[n]] = 0.0;//projectedSubProblem->C ;
+      alphOptProblem->active[n] = alphOptProblem->inactive[worst];
+      alphOptProblem->inactive[worst] = temp;
+      alphOptProblem->beta[worst] = DBL_MAX-1.0;
     }
     else {
-      YadjustGradF(fp, ds, sp, n, worst, change, 0, flag, params, diff);
-      fp->alpha[fp->inactive[worst]] -= diff;
-      fp->alpha[fp->active[n]] = 0.0;//sp->C ;
-      fp->active[n] = fp->inactive[worst];
-      fp->inactive[worst] = temp;
-      fp->beta[worst] = DBL_MAX;
+      YadjustGradF(alphOptProblem, fullDataset, projectedSubProblem, n, worst, change, 0, flag, params, diff);
+      alphOptProblem->alpha[alphOptProblem->inactive[worst]] -= diff;
+      alphOptProblem->alpha[alphOptProblem->active[n]] = 0.0;//projectedSubProblem->C ;
+      alphOptProblem->active[n] = alphOptProblem->inactive[worst];
+      alphOptProblem->inactive[worst] = temp;
+      alphOptProblem->beta[worst] = DBL_MAX;
     }
   }
 
@@ -403,7 +403,7 @@ int Ysingleswap(struct yDenseData *ds, struct Fullproblem *fp, struct Projected 
   return 1;
 }
 
-int singleswap(struct denseData *ds, struct Fullproblem *fp, struct Projected *sp, int n, struct svm_args *params)
+int singleswap(struct denseData *fullDataset, struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, int n, struct svm_args *params)
 /* Function to swap out a single element from the active set. */
 {
   int flag = 0;
@@ -414,67 +414,67 @@ int singleswap(struct denseData *ds, struct Fullproblem *fp, struct Projected *s
   int target, change=1;
 
 
-  findWorst(&worst,&target,&change,&n, ds, fp);
+  findWorst(&worst,&target,&change,&n, fullDataset, alphOptProblem);
 
   double diff;
   if (flag == 1) {
-    diff = change*(fp->alpha[fp->active[n]] - fp->C)  ;
+    diff = change*(alphOptProblem->alpha[alphOptProblem->active[n]] - alphOptProblem->C)  ;
   }
   else{
-    diff = change*fp->alpha[fp->active[n]];
+    diff = change*alphOptProblem->alpha[alphOptProblem->active[n]];
   }
 
   if( worst < 0)
   {
-    spreadChange( fp, sp, target, diff, change, n);
+    spreadChange( alphOptProblem, projectedSubProblem, target, diff, change, n);
 
     if (flag) {
-      fp->alpha[fp->active[n]] = fp->C;
+      alphOptProblem->alpha[alphOptProblem->active[n]] = alphOptProblem->C;
     }
     else{
-      fp->alpha[fp->active[n]] = 0;
+      alphOptProblem->alpha[alphOptProblem->active[n]] = 0;
     }
 
-    return n - fp->p;
+    return n - alphOptProblem->p;
   }
 
-  int temp = fp->active[n];
+  int temp = alphOptProblem->active[n];
   if (flag)
   {
- if ( (fp->inactive[worst] < ds->procPos && target > 0) || (fp->inactive[worst] >= ds->procPos && target < 0) ) {
-      adjustGradF(fp, ds, sp, n, worst, change, 1, flag, params, diff);
-      fp->alpha[fp->inactive[worst]] += diff;
-      fp->alpha[fp->active[n]] = sp->C;
-      fp->active[n] = fp->inactive[worst];
-      fp->inactive[worst] = temp;
-      fp->beta[worst] = DBL_MAX;
+ if ( (alphOptProblem->inactive[worst] < fullDataset->procPos && target > 0) || (alphOptProblem->inactive[worst] >= fullDataset->procPos && target < 0) ) {
+      adjustGradF(alphOptProblem, fullDataset, projectedSubProblem, n, worst, change, 1, flag, params, diff);
+      alphOptProblem->alpha[alphOptProblem->inactive[worst]] += diff;
+      alphOptProblem->alpha[alphOptProblem->active[n]] = projectedSubProblem->C;
+      alphOptProblem->active[n] = alphOptProblem->inactive[worst];
+      alphOptProblem->inactive[worst] = temp;
+      alphOptProblem->beta[worst] = DBL_MAX;
     }
     else{
-      adjustGradF(fp, ds, sp, n, worst, change, 0, flag, params, diff);
-      fp->alpha[fp->inactive[worst]] -= diff;
-      fp->alpha[fp->active[n]] = sp->C;
-      fp->active[n] = fp->inactive[worst];
-      fp->inactive[worst] = temp;
-      fp->beta[worst] = DBL_MAX;
+      adjustGradF(alphOptProblem, fullDataset, projectedSubProblem, n, worst, change, 0, flag, params, diff);
+      alphOptProblem->alpha[alphOptProblem->inactive[worst]] -= diff;
+      alphOptProblem->alpha[alphOptProblem->active[n]] = projectedSubProblem->C;
+      alphOptProblem->active[n] = alphOptProblem->inactive[worst];
+      alphOptProblem->inactive[worst] = temp;
+      alphOptProblem->beta[worst] = DBL_MAX;
     }
   }
   else
   {
- if ( (fp->inactive[worst] < ds->procPos && target > 0) || (fp->inactive[worst] >= ds->procPos && target < 0) ) {
-      adjustGradF(fp, ds, sp, n, worst, change, 1, flag, params, diff);
-      fp->alpha[fp->inactive[worst]] += diff;
-      fp->alpha[fp->active[n]] = 0.0;//sp->C ;
-      fp->active[n] = fp->inactive[worst];
-      fp->inactive[worst] = temp;
-      fp->beta[worst] = DBL_MAX-1.0;
+ if ( (alphOptProblem->inactive[worst] < fullDataset->procPos && target > 0) || (alphOptProblem->inactive[worst] >= fullDataset->procPos && target < 0) ) {
+      adjustGradF(alphOptProblem, fullDataset, projectedSubProblem, n, worst, change, 1, flag, params, diff);
+      alphOptProblem->alpha[alphOptProblem->inactive[worst]] += diff;
+      alphOptProblem->alpha[alphOptProblem->active[n]] = 0.0;//projectedSubProblem->C ;
+      alphOptProblem->active[n] = alphOptProblem->inactive[worst];
+      alphOptProblem->inactive[worst] = temp;
+      alphOptProblem->beta[worst] = DBL_MAX-1.0;
     }
     else {
-      adjustGradF(fp, ds, sp, n, worst, change, 0, flag, params, diff);
-      fp->alpha[fp->inactive[worst]] -= diff;
-      fp->alpha[fp->active[n]] = 0.0;//sp->C ;
-      fp->active[n] = fp->inactive[worst];
-      fp->inactive[worst] = temp;
-      fp->beta[worst] = DBL_MAX;
+      adjustGradF(alphOptProblem, fullDataset, projectedSubProblem, n, worst, change, 0, flag, params, diff);
+      alphOptProblem->alpha[alphOptProblem->inactive[worst]] -= diff;
+      alphOptProblem->alpha[alphOptProblem->active[n]] = 0.0;//projectedSubProblem->C ;
+      alphOptProblem->active[n] = alphOptProblem->inactive[worst];
+      alphOptProblem->inactive[worst] = temp;
+      alphOptProblem->beta[worst] = DBL_MAX;
     }
   }
 
@@ -482,178 +482,178 @@ int singleswap(struct denseData *ds, struct Fullproblem *fp, struct Projected *s
   return 1;
 }
 
-int checkfpConstraints(struct Fullproblem *fp)
+int checkfpConstraints(struct Fullproblem *alphOptProblem)
 {
-  for (int i = 0; i < fp->p; i++) {
-    if(fp->alpha[fp->active[i]]>fp->C){
-      return i+fp->p;
+  for (int i = 0; i < alphOptProblem->p; i++) {
+    if(alphOptProblem->alpha[alphOptProblem->active[i]]>alphOptProblem->C){
+      return i+alphOptProblem->p;
     }
-    else if(fp->alpha[fp->active[i]] < 0.0){
-      return i-fp->p;
+    else if(alphOptProblem->alpha[alphOptProblem->active[i]] < 0.0){
+      return i-alphOptProblem->p;
     }
   }
   return 0;
 }
 
-void YadjustGradF(struct Fullproblem *fp, struct yDenseData *ds, struct Projected *sp, int n, int worst, int signal, int target, int flag, struct svm_args *params, double diff)
+void YadjustGradF(struct Fullproblem *alphOptProblem, struct yDenseData *fullDataset, struct Projected *projectedSubProblem, int n, int worst, int signal, int target, int flag, struct svm_args *params, double diff)
 {
   // updatee based on change of H matrix:
-  double* nline = findListLine(fp->partialH,fp->active[n]);
+  double* nline = findListLine(alphOptProblem->partialH,alphOptProblem->active[n]);
   if (signal == -1) {
     #pragma omp parallel for
-    for (int i = 0; i < fp->q; i++) {
-      fp->gradF[ fp->inactive[i] ] -= nline[fp->inactive[i]]*diff ;
+    for (int i = 0; i < alphOptProblem->q; i++) {
+      alphOptProblem->gradF[ alphOptProblem->inactive[i] ] -= nline[alphOptProblem->inactive[i]]*diff ;
     }
-    for (int i = 0; i < fp->p; i++) {
+    for (int i = 0; i < alphOptProblem->p; i++) {
       if(i<n){
-        fp->gradF[ fp->active[i] ] -= sp->H[i][n]*diff;
+        alphOptProblem->gradF[ alphOptProblem->active[i] ] -= projectedSubProblem->H[i][n]*diff;
       }
       else{
-        fp->gradF[ fp->active[i] ] -= sp->H[n][i]*diff;
+        alphOptProblem->gradF[ alphOptProblem->active[i] ] -= projectedSubProblem->H[n][i]*diff;
       }
     }
   }
   else
   {
     #pragma omp parallel for
-    for (int i = 0; i < fp->q; i++) {
-      fp->gradF[ fp->inactive[i] ] += nline[fp->inactive[i]]*diff ;
+    for (int i = 0; i < alphOptProblem->q; i++) {
+      alphOptProblem->gradF[ alphOptProblem->inactive[i] ] += nline[alphOptProblem->inactive[i]]*diff ;
     }
-    for (int i = 0; i < fp->p; i++) {
+    for (int i = 0; i < alphOptProblem->p; i++) {
       if(i<n){
-        fp->gradF[ fp->active[i] ] += sp->H[i][n]*diff ;
+        alphOptProblem->gradF[ alphOptProblem->active[i] ] += projectedSubProblem->H[i][n]*diff ;
       }
       else{
-        fp->gradF[ fp->active[i] ] += sp->H[n][i]*diff ;
+        alphOptProblem->gradF[ alphOptProblem->active[i] ] += projectedSubProblem->H[n][i]*diff ;
       }
     }
   }
 
   // Update based on change of
 
-  YpartialHupdate(fp, sp, ds, params, n, worst);
+  YpartialHupdate(alphOptProblem, projectedSubProblem, fullDataset, params, n, worst);
 
 
   if (target) {
-    for (int i = 0; i < fp->q; i++) {
+    for (int i = 0; i < alphOptProblem->q; i++) {
       if (i == worst) {
-        fp->gradF[fp->active[n]] -= nline[fp->active[n]]*diff;
+        alphOptProblem->gradF[alphOptProblem->active[n]] -= nline[alphOptProblem->active[n]]*diff;
         continue;
       }
-      fp->gradF[fp->inactive[i]] -= nline[fp->inactive[i]]*diff;
+      alphOptProblem->gradF[alphOptProblem->inactive[i]] -= nline[alphOptProblem->inactive[i]]*diff;
     }
     for (int i = 0; i < n; i++) {
-      fp->gradF[fp->active[i]] -= sp->H[i][n]*diff;
+      alphOptProblem->gradF[alphOptProblem->active[i]] -= projectedSubProblem->H[i][n]*diff;
     }
-    fp->gradF[fp->inactive[worst]] -= sp->H[n][n]*diff;
-    for (int i = n+1; i < sp->p; i++) {
-      fp->gradF[fp->active[i]] -= sp->H[n][i]*diff;
+    alphOptProblem->gradF[alphOptProblem->inactive[worst]] -= projectedSubProblem->H[n][n]*diff;
+    for (int i = n+1; i < projectedSubProblem->p; i++) {
+      alphOptProblem->gradF[alphOptProblem->active[i]] -= projectedSubProblem->H[n][i]*diff;
     }
   }
   else{
     #pragma omp parallel for
-    for (int i = 0; i < fp->q; i++) {
+    for (int i = 0; i < alphOptProblem->q; i++) {
       if (i == worst) {
-        fp->gradF[fp->active[n]] += nline[fp->active[n]]*diff;
+        alphOptProblem->gradF[alphOptProblem->active[n]] += nline[alphOptProblem->active[n]]*diff;
         continue;
       }
-      fp->gradF[fp->inactive[i]] += nline[fp->inactive[i]]*diff;
+      alphOptProblem->gradF[alphOptProblem->inactive[i]] += nline[alphOptProblem->inactive[i]]*diff;
     }
     for (int i = 0; i < n; i++) {
-      fp->gradF[fp->active[i]] += sp->H[i][n]*diff;
+      alphOptProblem->gradF[alphOptProblem->active[i]] += projectedSubProblem->H[i][n]*diff;
     }
-    fp->gradF[fp->inactive[worst]] += sp->H[n][n]*diff;
-    for (int i = n+1; i < sp->p; i++) {
-      fp->gradF[fp->active[i]] += sp->H[n][i]*diff;
+    alphOptProblem->gradF[alphOptProblem->inactive[worst]] += projectedSubProblem->H[n][n]*diff;
+    for (int i = n+1; i < projectedSubProblem->p; i++) {
+      alphOptProblem->gradF[alphOptProblem->active[i]] += projectedSubProblem->H[n][i]*diff;
     }
   }
 }
 
 
-void adjustGradF(struct Fullproblem *fp, struct denseData *ds, struct Projected *sp, int n, int worst, int signal, int target, int flag, struct svm_args *params, double diff)
+void adjustGradF(struct Fullproblem *alphOptProblem, struct denseData *fullDataset, struct Projected *projectedSubProblem, int n, int worst, int signal, int target, int flag, struct svm_args *params, double diff)
 {
   // updatee based on change of H matrix:
-  double* nline = findListLine(fp->partialH,fp->active[n]);
+  double* nline = findListLine(alphOptProblem->partialH,alphOptProblem->active[n]);
   if (signal == -1) {
-    for (int i = 0; i < fp->q; i++) {
-      fp->gradF[ fp->inactive[i] ] -= nline[fp->inactive[i]]*diff ;
+    for (int i = 0; i < alphOptProblem->q; i++) {
+      alphOptProblem->gradF[ alphOptProblem->inactive[i] ] -= nline[alphOptProblem->inactive[i]]*diff ;
     }
-    for (int i = 0; i < fp->p; i++) {
+    for (int i = 0; i < alphOptProblem->p; i++) {
       if(i<n){
-        fp->gradF[ fp->active[i] ] -= sp->H[i][n]*diff;
+        alphOptProblem->gradF[ alphOptProblem->active[i] ] -= projectedSubProblem->H[i][n]*diff;
       }
       else{
-        fp->gradF[ fp->active[i] ] -= sp->H[n][i]*diff;
+        alphOptProblem->gradF[ alphOptProblem->active[i] ] -= projectedSubProblem->H[n][i]*diff;
       }
     }
   }
   else
   {
     #pragma omp parallel for
-    for (int i = 0; i < fp->q; i++) {
-      fp->gradF[ fp->inactive[i] ] += nline[fp->inactive[i]]*diff ;
+    for (int i = 0; i < alphOptProblem->q; i++) {
+      alphOptProblem->gradF[ alphOptProblem->inactive[i] ] += nline[alphOptProblem->inactive[i]]*diff ;
     }
-    for (int i = 0; i < fp->p; i++) {
+    for (int i = 0; i < alphOptProblem->p; i++) {
       if(i<n){
-        fp->gradF[ fp->active[i] ] += sp->H[i][n]*diff ;
+        alphOptProblem->gradF[ alphOptProblem->active[i] ] += projectedSubProblem->H[i][n]*diff ;
       }
       else{
-        fp->gradF[ fp->active[i] ] += sp->H[n][i]*diff ;
+        alphOptProblem->gradF[ alphOptProblem->active[i] ] += projectedSubProblem->H[n][i]*diff ;
       }
     }
   }
 
   // Update based on change of
 
-  partialHupdate(fp, sp, ds, params, n, worst);
+  partialHupdate(alphOptProblem, projectedSubProblem, fullDataset, params, n, worst);
 
 
   if (target) {
-    for (int i = 0; i < fp->q; i++) {
+    for (int i = 0; i < alphOptProblem->q; i++) {
       if (i == worst) {
-        fp->gradF[fp->active[n]] -= nline[fp->active[n]]*diff;
+        alphOptProblem->gradF[alphOptProblem->active[n]] -= nline[alphOptProblem->active[n]]*diff;
         continue;
       }
-      fp->gradF[fp->inactive[i]] -= nline[fp->inactive[i]]*diff;
+      alphOptProblem->gradF[alphOptProblem->inactive[i]] -= nline[alphOptProblem->inactive[i]]*diff;
     }
     for (int i = 0; i < n; i++) {
-      fp->gradF[fp->active[i]] -= sp->H[i][n]*diff;
+      alphOptProblem->gradF[alphOptProblem->active[i]] -= projectedSubProblem->H[i][n]*diff;
     }
-    fp->gradF[fp->inactive[worst]] -= sp->H[n][n]*diff;
-    for (int i = n+1; i < sp->p; i++) {
-      fp->gradF[fp->active[i]] -= sp->H[n][i]*diff;
+    alphOptProblem->gradF[alphOptProblem->inactive[worst]] -= projectedSubProblem->H[n][n]*diff;
+    for (int i = n+1; i < projectedSubProblem->p; i++) {
+      alphOptProblem->gradF[alphOptProblem->active[i]] -= projectedSubProblem->H[n][i]*diff;
     }
   }
   else{
-    for (int i = 0; i < fp->q; i++) {
+    for (int i = 0; i < alphOptProblem->q; i++) {
       if (i == worst) {
-        fp->gradF[fp->active[n]] += nline[fp->active[n]]*diff;
+        alphOptProblem->gradF[alphOptProblem->active[n]] += nline[alphOptProblem->active[n]]*diff;
         continue;
       }
-      fp->gradF[fp->inactive[i]] += nline[fp->inactive[i]]*diff;
+      alphOptProblem->gradF[alphOptProblem->inactive[i]] += nline[alphOptProblem->inactive[i]]*diff;
     }
     for (int i = 0; i < n; i++) {
-      fp->gradF[fp->active[i]] += sp->H[i][n]*diff;
+      alphOptProblem->gradF[alphOptProblem->active[i]] += projectedSubProblem->H[i][n]*diff;
     }
-    fp->gradF[fp->inactive[worst]] += sp->H[n][n]*diff;
-    for (int i = n+1; i < sp->p; i++) {
-      fp->gradF[fp->active[i]] += sp->H[n][i]*diff;
+    alphOptProblem->gradF[alphOptProblem->inactive[worst]] += projectedSubProblem->H[n][n]*diff;
+    for (int i = n+1; i < projectedSubProblem->p; i++) {
+      alphOptProblem->gradF[alphOptProblem->active[i]] += projectedSubProblem->H[n][i]*diff;
     }
   }
 }
 
-void Yreinitprob(struct yDenseData *ds, struct Fullproblem *fp, struct Projected *sp, int add, int* temp, int* temp2)
+void Yreinitprob(struct yDenseData *fullDataset, struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, int add, int* temp, int* temp2)
 {
   for (int i = 0; i < add; i++) {
-    fp->active[(fp->p - add) + i] = temp[i];
-    fp->partialH = Yappend(ds,fp->partialH, fp->active[(fp->p - add) + i]);
+    alphOptProblem->active[(alphOptProblem->p - add) + i] = temp[i];
+    alphOptProblem->partialH = Yappend(fullDataset,alphOptProblem->partialH, alphOptProblem->active[(alphOptProblem->p - add) + i]);
   }
 
   int k = 0;
-  for (int i = 0; i < fp->q; i++) {
+  for (int i = 0; i < alphOptProblem->q; i++) {
     for (int j = 0; j < add; j++) {
-      if (fp->inactive[i] == temp[j]) {
-        fp->inactive[i] = temp2[k];
+      if (alphOptProblem->inactive[i] == temp[j]) {
+        alphOptProblem->inactive[i] = temp2[k];
         k++;
         if (k == add) {
           return;
@@ -666,17 +666,17 @@ void Yreinitprob(struct yDenseData *ds, struct Fullproblem *fp, struct Projected
 }
 
 
-void reinitprob(struct denseData *ds, struct Fullproblem *fp, struct Projected *sp, int add, int* temp, int* temp2)
+void reinitprob(struct denseData *fullDataset, struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, int add, int* temp, int* temp2)
 {
   for (int i = 0; i < add; i++) {
-    fp->active[(fp->p - add) + i] = temp[i];
-    fp->partialH = append(ds,fp->partialH, fp->active[(fp->p - add) + i]);
+    alphOptProblem->active[(alphOptProblem->p - add) + i] = temp[i];
+    alphOptProblem->partialH = append(fullDataset,alphOptProblem->partialH, alphOptProblem->active[(alphOptProblem->p - add) + i]);
   }
   int k = 0;
-  for (int i = 0; i < fp->q; i++) {
+  for (int i = 0; i < alphOptProblem->q; i++) {
     for (int j = 0; j < add; j++) {
-      if (fp->inactive[i] == temp[j]) {
-        fp->inactive[i] = temp2[k];
+      if (alphOptProblem->inactive[i] == temp[j]) {
+        alphOptProblem->inactive[i] = temp2[k];
         k++;
         if (k == add) {
           return;
@@ -686,101 +686,101 @@ void reinitprob(struct denseData *ds, struct Fullproblem *fp, struct Projected *
   }
 }
 
-void shrinkSize( struct Fullproblem *fp, struct Projected *sp, int k)
+void shrinkSize( struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, int k)
 {
 
-  int temp = fp->active[k];
-  for (int i = k; i < fp->p  - 1; i++) {
-    fp->active[i] = fp->active[i+1];
+  int temp = alphOptProblem->active[k];
+  for (int i = k; i < alphOptProblem->p  - 1; i++) {
+    alphOptProblem->active[i] = alphOptProblem->active[i+1];
   }
-  fp->partialH = delete(temp, fp->partialH);
+  alphOptProblem->partialH = delete(temp, alphOptProblem->partialH);
 
 
-  fp->p--;
-  fp->q++;
+  alphOptProblem->p--;
+  alphOptProblem->q++;
 
-  fp->active = realloc(fp->active,sizeof(int)*fp->p);
-  fp->inactive = realloc(fp->inactive,sizeof(int)*fp->q);
-  fp->inactive[fp->q-1] = temp;
-  fp->beta = realloc(fp->beta,sizeof(double)*fp->q);
+  alphOptProblem->active = realloc(alphOptProblem->active,sizeof(int)*alphOptProblem->p);
+  alphOptProblem->inactive = realloc(alphOptProblem->inactive,sizeof(int)*alphOptProblem->q);
+  alphOptProblem->inactive[alphOptProblem->q-1] = temp;
+  alphOptProblem->beta = realloc(alphOptProblem->beta,sizeof(double)*alphOptProblem->q);
 
 
 
   // Change projected problem struct:
 
-  sp->p--;
+  projectedSubProblem->p--;
 
-  sp->alphaHat = realloc(sp->alphaHat,sizeof(double)*sp->p);
-  sp->yHat = realloc(sp->yHat,sizeof(int)*sp->p);
-  sp->rHat = realloc(sp->rHat,sizeof(double)*sp->p);
-  sp->gamma = realloc(sp->gamma,sizeof(double)*sp->p);
-  sp->rho = realloc(sp->rho,sizeof(double)*sp->p);
-  sp->Hrho = realloc(sp->Hrho,sizeof(double)*sp->p);
+  projectedSubProblem->alphaHat = realloc(projectedSubProblem->alphaHat,sizeof(double)*projectedSubProblem->p);
+  projectedSubProblem->yHat = realloc(projectedSubProblem->yHat,sizeof(int)*projectedSubProblem->p);
+  projectedSubProblem->rHat = realloc(projectedSubProblem->rHat,sizeof(double)*projectedSubProblem->p);
+  projectedSubProblem->gamma = realloc(projectedSubProblem->gamma,sizeof(double)*projectedSubProblem->p);
+  projectedSubProblem->rho = realloc(projectedSubProblem->rho,sizeof(double)*projectedSubProblem->p);
+  projectedSubProblem->Hrho = realloc(projectedSubProblem->Hrho,sizeof(double)*projectedSubProblem->p);
 
-  sp->H = realloc(sp->H,sizeof(double*)*sp->p);
-  sp->h = realloc(sp->h,sizeof(double)*((sp->p*(sp->p+1))/2));
+  projectedSubProblem->H = realloc(projectedSubProblem->H,sizeof(double*)*projectedSubProblem->p);
+  projectedSubProblem->h = realloc(projectedSubProblem->h,sizeof(double)*((projectedSubProblem->p*(projectedSubProblem->p+1))/2));
 
   int j = 0;
-  for (int i = 0; i < sp->p; i++) {
-    sp->H[i] = &(sp->h[j]);
-    j+=(sp->p-i-1);
+  for (int i = 0; i < projectedSubProblem->p; i++) {
+    projectedSubProblem->H[i] = &(projectedSubProblem->h[j]);
+    j+=(projectedSubProblem->p-i-1);
   }
-  fp->partialH.head->prev = fp->partialH.head;
+  alphOptProblem->partialH.head->prev = alphOptProblem->partialH.head;
   int i = 0;
-  while (fp->partialH.head->prev != NULL) {
-    for (int j = i; j < sp->p; j++) {
-      sp->H[i][j] = fp->partialH.head->prev->line[fp->active[j]];
+  while (alphOptProblem->partialH.head->prev != NULL) {
+    for (int j = i; j < projectedSubProblem->p; j++) {
+      projectedSubProblem->H[i][j] = alphOptProblem->partialH.head->prev->line[alphOptProblem->active[j]];
     }
     i++;
-    fp->partialH.head->prev = fp->partialH.head->prev->next;
+    alphOptProblem->partialH.head->prev = alphOptProblem->partialH.head->prev->next;
   }
 }
 
-void changeP( struct Fullproblem *fp, struct Projected *sp, int add)
+void changeP( struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, int add)
 {
-  fp->p += add;
-  fp->q -= add;
-  sp->p += add;
+  alphOptProblem->p += add;
+  alphOptProblem->q -= add;
+  projectedSubProblem->p += add;
 
-  fp->active = realloc(fp->active,sizeof(int)*fp->p);
-  fp->inactive = realloc(fp->inactive,sizeof(int)*fp->q);
-  fp->beta = realloc(fp->beta,sizeof(double)*fp->q);
+  alphOptProblem->active = realloc(alphOptProblem->active,sizeof(int)*alphOptProblem->p);
+  alphOptProblem->inactive = realloc(alphOptProblem->inactive,sizeof(int)*alphOptProblem->q);
+  alphOptProblem->beta = realloc(alphOptProblem->beta,sizeof(double)*alphOptProblem->q);
 
-  sp->alphaHat = realloc(sp->alphaHat,sizeof(double)*sp->p);
-  sp->yHat = realloc(sp->yHat,sizeof(int)*sp->p);
-  sp->rHat = realloc(sp->rHat,sizeof(double)*sp->p);
-  sp->gamma = realloc(sp->gamma,sizeof(double)*sp->p);
-  sp->rho = realloc(sp->rho,sizeof(double)*sp->p);
-  sp->Hrho = realloc(sp->Hrho,sizeof(double)*sp->p);
-  sp->H = realloc(sp->H,sizeof(double*)*sp->p);
-  sp->h = realloc(sp->h,sizeof(double)*((sp->p*(sp->p+1))/2));
+  projectedSubProblem->alphaHat = realloc(projectedSubProblem->alphaHat,sizeof(double)*projectedSubProblem->p);
+  projectedSubProblem->yHat = realloc(projectedSubProblem->yHat,sizeof(int)*projectedSubProblem->p);
+  projectedSubProblem->rHat = realloc(projectedSubProblem->rHat,sizeof(double)*projectedSubProblem->p);
+  projectedSubProblem->gamma = realloc(projectedSubProblem->gamma,sizeof(double)*projectedSubProblem->p);
+  projectedSubProblem->rho = realloc(projectedSubProblem->rho,sizeof(double)*projectedSubProblem->p);
+  projectedSubProblem->Hrho = realloc(projectedSubProblem->Hrho,sizeof(double)*projectedSubProblem->p);
+  projectedSubProblem->H = realloc(projectedSubProblem->H,sizeof(double*)*projectedSubProblem->p);
+  projectedSubProblem->h = realloc(projectedSubProblem->h,sizeof(double)*((projectedSubProblem->p*(projectedSubProblem->p+1))/2));
 
   int j = 0;
-  for (int i = 0; i < sp->p; i++) {
-    sp->H[i] = &(sp->h[j]);
-    j+=(sp->p-i-1);
+  for (int i = 0; i < projectedSubProblem->p; i++) {
+    projectedSubProblem->H[i] = &(projectedSubProblem->h[j]);
+    j+=(projectedSubProblem->p-i-1);
   }
 }
 
-int findWorstest(struct Fullproblem *fp , int add, int* temp, int* temp2)
+int findWorstest(struct Fullproblem *alphOptProblem , int add, int* temp, int* temp2)
 {
   double *betaVal = malloc(sizeof(double)*add);
   for (int i = 0; i < add; i++) {
     betaVal[i] = DBL_MAX;
   }
-  for (int i = 0; i < fp->q; i++)
+  for (int i = 0; i < alphOptProblem->q; i++)
   {
     for (int j = 0; j < add; j++)
     {
-      if (fp->beta[i] < betaVal[j])
+      if (alphOptProblem->beta[i] < betaVal[j])
       {
         for (int k = add - 1; k > j ; k--)
         {
           temp[k] = temp[k-1];
           betaVal[k] = betaVal[k-1];
         }
-        temp[j] = fp->inactive[i];
-        betaVal[j] = fp->beta[i];
+        temp[j] = alphOptProblem->inactive[i];
+        betaVal[j] = alphOptProblem->beta[i];
         break;
       }
     }
@@ -799,12 +799,12 @@ int findWorstest(struct Fullproblem *fp , int add, int* temp, int* temp2)
   for (int i = 0; i < add; i++) {
     flag = 0;
     for (int j = 0; j < add; j++) {
-      if (fp->inactive[fp->q - add + i] == temp[i]) {
+      if (alphOptProblem->inactive[alphOptProblem->q - add + i] == temp[i]) {
         flag = 1;
       }
     }
     if (flag == 0) {
-      temp2[k] = fp->inactive[fp->q - add + i];
+      temp2[k] = alphOptProblem->inactive[alphOptProblem->q - add + i];
       k++;
     }
   }
@@ -814,15 +814,15 @@ int findWorstest(struct Fullproblem *fp , int add, int* temp, int* temp2)
   return add;
 }
 
-void  freeFullproblem(struct Fullproblem *fp)
+void  freeFullproblem(struct Fullproblem *alphOptProblem)
 /* Function to free dynamically allocated memory in Fullproblem struct */
 {
-  free(fp->alpha);
-  free(fp->beta);
-  free(fp->gradF);
+  free(alphOptProblem->alpha);
+  free(alphOptProblem->beta);
+  free(alphOptProblem->gradF);
 
-  free(fp->active);
-  free(fp->inactive);
+  free(alphOptProblem->active);
+  free(alphOptProblem->inactive);
 
-  free_list(fp->partialH);
+  free_list(alphOptProblem->partialH);
 }

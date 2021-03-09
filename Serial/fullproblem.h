@@ -16,20 +16,20 @@
  *
  */
 
-void changeP( struct Fullproblem *fp, struct Projected *sp, int add);
-int findWorstAdd(struct Fullproblem *fp , int add, int* temp, int* temp2);
-void shrinkSize( struct Fullproblem *fp, struct Projected *sp, int k);
-void alloc_prob(struct Fullproblem *prob, struct denseData *ds, int p);
-void init_prob(struct Fullproblem *prob, struct denseData *ds);
-void updateAlphaR(struct Fullproblem *fp, struct Projected *sp);
-void calculateBeta(struct Fullproblem *fp, struct Projected *sp, struct denseData *ds);
-int swapMostNegative(struct Fullproblem *fp);
-int singleswap(struct denseData *ds, struct Fullproblem *fp, struct Projected *sp, int n, struct svm_args *params);
-void adjustGradF(struct Fullproblem *fp, struct denseData *ds, struct Projected *sp, int n, int worst, int signal, int target, int flag, struct svm_args *params, double diff);
-int checkfpConstraints(struct Fullproblem *fp);
-void findWorst(int *worst, int* target, int* change, int *n, struct denseData *ds, struct Fullproblem *fp);
-void spreadChange(struct denseData *ds, struct Fullproblem *fp, struct Projected *sp, int target, double diff, int change, int n);
-void reinitprob(struct denseData *ds, struct Fullproblem *fp, struct Projected *sp, int add, int* temp, int* temp2);
-void  freeFullproblem(struct Fullproblem *fp);
+void changeP( struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, int add);
+int findWorstAdd(struct Fullproblem *alphOptProblem , int add, int* temp, int* temp2);
+void shrinkSize( struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, int k);
+void allocProb(struct Fullproblem *prob, struct denseData *fullDataset, int p);
+void initProb(struct Fullproblem *prob, struct denseData *fullDataset);
+void updateAlphaR(struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem);
+void calculateBeta(struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, struct denseData *fullDataset);
+int swapMostNegative(struct Fullproblem *alphOptProblem);
+int singleswap(struct denseData *fullDataset, struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, int n, struct svm_args *params);
+void adjustGradF(struct Fullproblem *alphOptProblem, struct denseData *fullDataset, struct Projected *projectedSubProblem, int n, int worst, int signal, int target, int flag, struct svm_args *params, double diff);
+int checkfpConstraints(struct Fullproblem *alphOptProblem);
+void findWorst(int *worst, int* target, int* change, int *n, struct denseData *fullDataset, struct Fullproblem *alphOptProblem);
+void spreadChange(struct denseData *fullDataset, struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, int target, double diff, int change, int n);
+void reinitprob(struct denseData *fullDataset, struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, int add, int* temp, int* temp2);
+void  freeFullproblem(struct Fullproblem *alphOptProblem);
 
 #endif

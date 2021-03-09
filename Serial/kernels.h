@@ -14,8 +14,8 @@
  */
 
 
-int updateSubH(struct Fullproblem *fp, struct Projected *sp, struct denseData *ds, struct svm_args *params);
-void partialHupdate(struct Fullproblem *fp, struct Projected *sp, struct denseData *ds, struct svm_args *params, int n, int worst);
-void appendUpdate(struct denseData *ds, double *line, int n);
+int updateSubH(struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, struct denseData *fullDataset, struct svm_args *params);
+void partialHupdate(struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem, struct denseData *fullDataset, struct svm_args *params, int n, int worst);
+void appendUpdate(struct denseData *fullDataset, double *line, int n);
 
 #endif

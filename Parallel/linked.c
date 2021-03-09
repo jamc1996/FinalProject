@@ -65,10 +65,10 @@ List Init_Empty_List()
 }
 
 
-List append(struct denseData *ds, List l, int n)
+List append(struct denseData *fullDataset, List l, int n)
 /* Function to append a linked list with a new string. */
 {
-	if(n>ds->procInstances){
+	if(n>fullDataset->procInstances){
 		fprintf(stderr,"linked.c: invalid index (%d) appended\n",n);
 		exit(1);
 	}
@@ -76,15 +76,15 @@ List append(struct denseData *ds, List l, int n)
   if (l.head->line == NULL)
   {
     l.head->label = n;
-    l.head->line = malloc(sizeof(double)*ds->procInstances);
-    appendUpdate(ds,l.head->line,n);
+    l.head->line = malloc(sizeof(double)*fullDataset->procInstances);
+    appendUpdate(fullDataset,l.head->line,n);
     return l;
   }
   if (l.tail->line == NULL)
   {
     l.tail->label = n;
-    l.tail->line = malloc(sizeof(double)*ds->procInstances);
-    appendUpdate(ds,l.tail->line,n);
+    l.tail->line = malloc(sizeof(double)*fullDataset->procInstances);
+    appendUpdate(fullDataset,l.tail->line,n);
     return l;
   }
 
@@ -92,9 +92,9 @@ List append(struct denseData *ds, List l, int n)
   Create a new cell and arrange it after tail: */
 
   Cell *new = malloc(sizeof(Cell));
-  new->line = malloc(sizeof(double)*ds->procInstances);
+  new->line = malloc(sizeof(double)*fullDataset->procInstances);
   new->label = n;
-  appendUpdate(ds,new->line,n);
+  appendUpdate(fullDataset,new->line,n);
   new->prev = l.tail;
   l.tail->next = new;
   new->next = NULL;
@@ -103,10 +103,10 @@ List append(struct denseData *ds, List l, int n)
   return l;
 }
 
-List Yappend(struct yDenseData *ds, List l, int n)
+List Yappend(struct yDenseData *fullDataset, List l, int n)
 /* Function to append a linked list with a new string. */
 {
-	if(n>ds->nInstances){
+	if(n>fullDataset->nInstances){
 		fprintf(stderr,"linked.c: invalid index (%d) appended\n",n);
 		exit(1);
 	}
@@ -114,15 +114,15 @@ List Yappend(struct yDenseData *ds, List l, int n)
   if (l.head->line == NULL)
   {
     l.head->label = n;
-    l.head->line = malloc(sizeof(double)*ds->nInstances);
-    YappendUpdate(ds,l.head->line,n);
+    l.head->line = malloc(sizeof(double)*fullDataset->nInstances);
+    YappendUpdate(fullDataset,l.head->line,n);
     return l;
   }
   if (l.tail->line == NULL)
   {
     l.tail->label = n;
-    l.tail->line = malloc(sizeof(double)*ds->nInstances);
-    YappendUpdate(ds,l.tail->line,n);
+    l.tail->line = malloc(sizeof(double)*fullDataset->nInstances);
+    YappendUpdate(fullDataset,l.tail->line,n);
     return l;
   }
 
@@ -130,9 +130,9 @@ List Yappend(struct yDenseData *ds, List l, int n)
   Create a new cell and arrange it after tail: */
 
   Cell *new = malloc(sizeof(Cell));
-  new->line = malloc(sizeof(double)*ds->nInstances);
+  new->line = malloc(sizeof(double)*fullDataset->nInstances);
   new->label = n;
-  YappendUpdate(ds,new->line,n);
+  YappendUpdate(fullDataset,new->line,n);
   new->prev = l.tail;
   l.tail->next = new;
   new->next = NULL;

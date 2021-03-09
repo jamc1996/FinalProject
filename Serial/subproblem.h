@@ -14,20 +14,20 @@
  *
  */
 
-void alloc_subprob(struct Projected *sp, int p);
-void init_subprob(struct Projected *sp, struct Fullproblem *fp, struct denseData *ds, struct svm_args *params, int newRows);
-void init_symmetric(struct Projected *sp, int p);
-int cg(struct Projected *sp, struct Fullproblem *fp);
-int checkConstraints(struct Projected* sp, struct Fullproblem *fp);
-void init_error(struct Projected* sp);
-void calc_Hrho(struct Projected *sp);
-void linearOp2(double* vecOut, double* vecIn, double a, int p);
-void linearOp(double* vecOut, double* vecIn, double a, int p);
-void updateGamma(struct Projected *sp, double lambda);
-void calcYTR(struct Projected *sp, struct Fullproblem *fp);
-void copy_vector(double* a, double* b, int p);
-void constraint_projection(double* vecOut, double* vecIn, double* y, int p);
-double inner_prod(double *a, double *b, int p);
-void   freeSubProblem( struct Projected* sp);
+void allocProjectedProblem(struct Projected *projectedSubProblem, int p);
+void initSubprob(struct Projected *projectedSubProblem, struct Fullproblem *alphOptProblem, struct denseData *fullDataset, struct svm_args *params, int newRows);
+void init_symmetric(struct Projected *projectedSubProblem, int p);
+int runConjGradient(struct Projected *projectedSubProblem, struct Fullproblem *alphOptProblem);
+int checkConstraints(struct Projected* projectedSubProblem, struct Fullproblem *alphOptProblem);
+void initError(struct Projected* projectedSubProblem);
+void calcHrho(struct Projected *projectedSubProblem);
+void multiplyVectorThenAddNewVector(double* vecOut, double* vecIn, double multiplier, int vecLength);
+void vectorAdditionWithOperandMultiplication(double* vecOut, double* vecIn, double multiplier, int vecLength);
+void updateGamma(struct Projected *projectedSubProblem, double lambda);
+void calcYTR(struct Projected *projectedSubProblem, struct Fullproblem *alphOptProblem);
+void copyVector(double* newCopy, double* templateVector, int vecLength);
+void constraintProjection(double* vecOut, double* vecIn, double* yVec, int vecLength);
+double innerProduct(double *a, double *b, int vecLength);
+void   freeSubProblem( struct Projected* projectedSubProblem);
 
 #endif

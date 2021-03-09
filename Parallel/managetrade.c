@@ -18,26 +18,26 @@ void freeRdata(struct receiveData *rd, int myid)
 }
 
 
-void tradeInfo(struct receiveData *rd, struct denseData *ds, struct yDenseData *nds, struct Fullproblem *fp, struct Fullproblem *nfp, int nprocs, int myid, MPI_Comm comm)
+void tradeInfo(struct receiveData *rd, struct denseData *fullDataset, struct yDenseData *nds, struct Fullproblem *alphOptProblem, struct Fullproblem *nfp, int nprocs, int myid, MPI_Comm comm)
 /* Function to handle the initial exchange of information between processors. */
 {
 	int my_missed = 0;
 	int *my_missedInds;
 
-	rd->nFeatures = ds->nFeatures;
-	for(int i=0; i<fp->n; i++){
-		if(fabs(fp->alpha[i]-fp->C) < 0.00005){
+	rd->nFeatures = fullDataset->nFeatures;
+	for(int i=0; i<alphOptProblem->n; i++){
+		if(fabs(alphOptProblem->alpha[i]-alphOptProblem->C) < 0.00005){
 			my_missed++;
 		}
 	}
 	my_missedInds = malloc(sizeof(int)*my_missed);
 
 	if(my_missed > 0){
-		int my_missedMark = ds->procInstances;
+		int my_missedMark = fullDataset->procInstances;
 		int j = 0;
-		for(int i=0; i<fp->n; i++){
-			if(fabs(fp->alpha[i]-fp->C) < 0.00005){
-				if(i >= ds->procPos && my_missedMark == ds->procInstances){
+		for(int i=0; i<alphOptProblem->n; i++){
+			if(fabs(alphOptProblem->alpha[i]-alphOptProblem->C) < 0.00005){
+				if(i >= fullDataset->procPos && my_missedMark == fullDataset->procInstances){
 					my_missedMark = j;
 				}
 				my_missedInds[j] = i;
@@ -46,7 +46,7 @@ void tradeInfo(struct receiveData *rd, struct denseData *ds, struct yDenseData *
 		}
 
 	}
-	int my_p = fp->p;
+	int my_p = alphOptProblem->p;
 	double* alp;
 	int tMissed = my_missed;
 	int tP = my_p;
@@ -56,48 +56,48 @@ void tradeInfo(struct receiveData *rd, struct denseData *ds, struct yDenseData *
 	rd->total = tMissed+tP;
 
 	int *otherP = malloc(sizeof(int)*nprocs);
-	otherP[myid] = fp->p + my_missed;
+	otherP[myid] = alphOptProblem->p + my_missed;
 	if(myid == 0){
 		if(tMissed ==0){
 			nfp->inactive = NULL;
 			nfp->beta = NULL;
 		}
-		nds->nFeatures = ds->nFeatures;
+		nds->nFeatures = fullDataset->nFeatures;
 		nds->nInstances = tMissed + tP;
 
 		nds->data1d = malloc(sizeof(double)*20*nds->nFeatures*nds->nInstances);
 		nds->data = malloc(sizeof(double*)*20*nds->nInstances);
 		nds->y = malloc(sizeof(int)*20*nds->nInstances);
 		for(int i=0; i< 20*nds->nInstances; i++){
-			nds->data[i] = &nds->data1d[i*ds->nFeatures];
+			nds->data[i] = &nds->data1d[i*fullDataset->nFeatures];
 		}
 		nfp->alpha = malloc(sizeof(double)*20*nds->nInstances);
 		nfp->gradF = malloc(sizeof(double)*20*nds->nInstances);
 		nfp->n = nds->nInstances;
 		nfp->p = tP;
 		nfp->q = tMissed;
-		nfp->C = fp->C;
+		nfp->C = alphOptProblem->C;
 		nfp->active = malloc(sizeof(int)*nfp->p);
 		nfp->inactive = malloc(sizeof(int)*nfp->q);
 		nfp->beta = malloc(sizeof(double)*nfp->q);
 	}
 	else{
-		rd->y = malloc(sizeof(int)*20*(fp->p+my_missed));
-		alp = malloc(sizeof(double)*(fp->p+my_missed));
-		for(int i=0; i<fp->p; i++){
-			if(fp->active[i] < ds->procPos){
-				alp[i] = fp->alpha[fp->active[i]];
+		rd->y = malloc(sizeof(int)*20*(alphOptProblem->p+my_missed));
+		alp = malloc(sizeof(double)*(alphOptProblem->p+my_missed));
+		for(int i=0; i<alphOptProblem->p; i++){
+			if(alphOptProblem->active[i] < fullDataset->procPos){
+				alp[i] = alphOptProblem->alpha[alphOptProblem->active[i]];
 			}
 			else{
-				alp[i] = -fp->alpha[fp->active[i]];
+				alp[i] = -alphOptProblem->alpha[alphOptProblem->active[i]];
 			}
 		}
-		for(int i=fp->p; i<fp->p+my_missed; i++){
-			if(my_missedInds[i - fp->p] < ds->procPos){
-				alp[i] = fp->C;
+		for(int i=alphOptProblem->p; i<alphOptProblem->p+my_missed; i++){
+			if(my_missedInds[i - alphOptProblem->p] < fullDataset->procPos){
+				alp[i] = alphOptProblem->C;
 			}
 			else{
-				alp[i] = -fp->C;
+				alp[i] = -alphOptProblem->C;
 			}
 		}
 	}
@@ -116,16 +116,16 @@ void tradeInfo(struct receiveData *rd, struct denseData *ds, struct yDenseData *
 	}
 	if(myid == 0){
 
-		for(int i=0; i<fp->p; i++){
-			nfp->gradF[i] = -fp->alpha[fp->active[i]];
-			if(fp->active[i] < ds->procPos){
+		for(int i=0; i<alphOptProblem->p; i++){
+			nfp->gradF[i] = -alphOptProblem->alpha[alphOptProblem->active[i]];
+			if(alphOptProblem->active[i] < fullDataset->procPos){
 				nfp->gradF[i] = -nfp->gradF[i];
 			}
 		}
 		for(int i=0; i<my_missed; i++){
-			nfp->gradF[fp->p + i] = fp->C;
-			if(my_missedInds[i] < ds->procPos){
-				nfp->gradF[fp->p + i] = -nfp->gradF[fp->p + i];
+			nfp->gradF[alphOptProblem->p + i] = alphOptProblem->C;
+			if(my_missedInds[i] < fullDataset->procPos){
+				nfp->gradF[alphOptProblem->p + i] = -nfp->gradF[alphOptProblem->p + i];
 			}
 		}
 		int pos = 0;
@@ -143,26 +143,26 @@ void tradeInfo(struct receiveData *rd, struct denseData *ds, struct yDenseData *
 		}
 		int tot = 0;
 
-		rd->nFeatures = ds->nFeatures;
+		rd->nFeatures = fullDataset->nFeatures;
 		for(int id = 0; id< nprocs; id++){
 			for(int j=0; j<otherP[id]; j++){
 				if(id == 0){
-					for(int k =0; k< ds->nFeatures; k++){
-						nds->data[tot][k] = ds->data[fp->active[j]][k];
+					for(int k =0; k< fullDataset->nFeatures; k++){
+						nds->data[tot][k] = fullDataset->data[alphOptProblem->active[j]][k];
 					}
 					tot++;
 				}else{
-					MPI_Recv((nds->data[tot]), ds->nFeatures, MPI_DOUBLE, id, j, comm, MPI_STATUS_IGNORE);
+					MPI_Recv((nds->data[tot]), fullDataset->nFeatures, MPI_DOUBLE, id, j, comm, MPI_STATUS_IGNORE);
 					tot++;
 				}
 			}
 		}
 	}else{
-		for(int j=0; j<fp->p; j++){
-			MPI_Send(ds->data[fp->active[j]], ds->nFeatures, MPI_DOUBLE, 0, j, comm );
+		for(int j=0; j<alphOptProblem->p; j++){
+			MPI_Send(fullDataset->data[alphOptProblem->active[j]], fullDataset->nFeatures, MPI_DOUBLE, 0, j, comm );
 		}
-		for(int j = fp->p ; j<otherP[myid] ; j++ ){
-			MPI_Send(ds->data[my_missedInds[j - fp->p]], ds->nFeatures, MPI_DOUBLE, 0, j, comm);
+		for(int j = alphOptProblem->p ; j<otherP[myid] ; j++ ){
+			MPI_Send(fullDataset->data[my_missedInds[j - alphOptProblem->p]], fullDataset->nFeatures, MPI_DOUBLE, 0, j, comm);
 		}
 	}
 		MPI_Bcast(&(rd->nPos), 1, MPI_INT, 0,  comm);
@@ -200,10 +200,10 @@ void tradeInfo(struct receiveData *rd, struct denseData *ds, struct yDenseData *
 			temp = temp->next;
 		}
 	}else{
-		rd->data1d = malloc(sizeof(double)*ds->nFeatures*rd->total*20);
+		rd->data1d = malloc(sizeof(double)*fullDataset->nFeatures*rd->total*20);
 		rd->data = malloc(sizeof(double*)*rd->total*20);
 		for(int i=0; i<rd->total*20; i++){
-			rd->data[i] = &(rd->data1d[i*ds->nFeatures]);
+			rd->data[i] = &(rd->data1d[i*fullDataset->nFeatures]);
 		}
 
 		rd->alpha = malloc(sizeof(double)*rd->total*20);

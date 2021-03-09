@@ -26,18 +26,18 @@
  */
 
 
-void divideSet(struct denseData *ds, int nprocs, int myid);
-void testSavedModel(struct denseData *ds, char* fn, struct svm_args *params);
-void saveTrainedModel(struct Fullproblem *fp, struct yDenseData *ds, char *filename, struct svm_args *params);
-void read_file(char* filename, struct denseData* ds, int nprocs, int myid);
+void divideSet(struct denseData *fullDataset, int nprocs, int myid);
+void testSavedModel(struct denseData *fullDataset, char* fn, struct svm_args *params);
+void saveTrainedModel(struct Fullproblem *alphOptProblem, struct yDenseData *fullDataset, char *filename, struct svm_args *params);
+void readFile(char* filename, struct denseData* fullDataset, int nprocs, int myid);
 int readline(FILE *input, char **line);
-void count_entries(FILE *input, struct denseData* ds);
-int parse_arguments(int argc, char *argv[], char** filename, struct svm_args *parameters);
-void cleanData( struct denseData *ds);
-void preprocess(struct denseData *ds);
-void calcMeans(double *mean, struct denseData *ds);
-void normalise(double* mean, double* stdDev, struct denseData* ds);
-void calcStdDev(double* stdDev, double* mean, struct denseData *ds);
-void freeDenseData(struct denseData *ds);
+void count_entries(FILE *input, struct denseData* fullDataset);
+int parseArguments(int argc, char *argv[], char** filename, struct svm_args *parameters);
+void cleanData( struct denseData *fullDataset);
+void preprocess(struct denseData *fullDataset);
+void calcMeans(double *mean, struct denseData *fullDataset);
+void normalise(double* mean, double* stdDev, struct denseData* fullDataset);
+void calcStdDev(double* stdDev, double* mean, struct denseData *fullDataset);
+void freeDenseData(struct denseData *fullDataset);
 
 #endif

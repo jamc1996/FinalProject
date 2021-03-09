@@ -5,7 +5,7 @@
  *    Author: John Cormican
  */
 
-void run_Yserial_problem(struct yDenseData *ds, struct Fullproblem *fp, struct Projected *sp)
+void runSerialProblem(struct yDenseData *fullDataset, struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem)
 /*Function to run the serial program for data set with y vector. */
 {
   int k = 1;
@@ -15,40 +15,40 @@ void run_Yserial_problem(struct yDenseData *ds, struct Fullproblem *fp, struct P
 
   while(k){
 
-   	Yinit_subprob(sp, fp, ds, &parameters, 1);
+   	Yinit_subprob(projectedSubProblem, alphOptProblem, fullDataset, &parameters, 1);
 
    	//  congjugate gradient algorithm
    	//  if algorithm completes n == 0
    	//  if algorithm interrupt n != 0
-   	n = cg(sp, fp);
-   	updateAlphaR(fp, sp);
-   	calcYTR(sp, fp);
-   	YcalculateBeta(fp, sp, ds);
+   	n = runConjGradient(projectedSubProblem, alphOptProblem);
+   	updateAlphaR(alphOptProblem, projectedSubProblem);
+   	calcYTR(projectedSubProblem, alphOptProblem);
+   	YcalculateBeta(alphOptProblem, projectedSubProblem, fullDataset);
    	if (n==0) {
 
      	int add = 2;
 	    int *temp = malloc(sizeof(int)*add);
 	    int *temp2 = malloc(sizeof(int)*add);
-	    add = findWorstest(fp,add,temp,temp2);
+	    add = findWorstest(alphOptProblem,add,temp,temp2);
 
 	    if (add == 0){
 	      break;
 	    }
 
-	    changeP(fp, sp, add);
-	    Yreinitprob(ds, fp, sp, add, temp, temp2);
+	    changeP(alphOptProblem, projectedSubProblem, add);
+	    Yreinitprob(fullDataset, alphOptProblem, projectedSubProblem, add, temp, temp2);
 	    free(temp);
 	    free(temp2);
 	  }
 
 	  if (n) {
 	    // BCs broken, fix one at a time for the moment
-	    k = Ysingleswap(ds, fp, sp, n, &parameters);
+	    k = Ysingleswap(fullDataset, alphOptProblem, projectedSubProblem, n, &parameters);
 	    if (k < 0) {
-	      shrinkSize(fp, sp, k+fp->p);
+	      shrinkSize(alphOptProblem, projectedSubProblem, k+alphOptProblem->p);
 	    }
 	    else{
-	      n = checkfpConstraints(fp);
+	      n = checkfpConstraints(alphOptProblem);
 	    }
 	  }
 
@@ -60,7 +60,7 @@ void run_Yserial_problem(struct yDenseData *ds, struct Fullproblem *fp, struct P
 	}
 }
 
-void run_serial_problem(struct denseData *ds, struct Fullproblem *fp, struct Projected *sp)
+void run_serial_problem(struct denseData *fullDataset, struct Fullproblem *alphOptProblem, struct Projected *projectedSubProblem)
 /*Function to run the serial program for data set without y vector. */
 {
   int k = 1;
@@ -72,29 +72,29 @@ void run_serial_problem(struct denseData *ds, struct Fullproblem *fp, struct Pro
 
    	// H matrix columns re-set and subproblem changed
 
-   	init_subprob(sp, fp, ds, &parameters, 1);
+   	init_subprob(projectedSubProblem, alphOptProblem, fullDataset, &parameters, 1);
 
    	//  congjugate gradient algorithm
    	//  if algorithm completes n == 0
    	//  if algorithm interrupt n != 0
-   	n = cg(sp, fp);
+   	n = runConjGradient(projectedSubProblem, alphOptProblem);
 
-   	updateAlphaR(fp, sp);
-   	calcYTR(sp, fp);
-   	calculateBeta(fp, sp, ds);
+   	updateAlphaR(alphOptProblem, projectedSubProblem);
+   	calcYTR(projectedSubProblem, alphOptProblem);
+   	calculateBeta(alphOptProblem, projectedSubProblem, fullDataset);
 
    	if (n==0) {
      	int add = 2;
 	    int *temp = malloc(sizeof(int)*add);
 	    int *temp2 = malloc(sizeof(int)*add);
-	    add = findWorstest(fp,add,temp,temp2);
+	    add = findWorstest(alphOptProblem,add,temp,temp2);
 
 	    if (add == 0){
 	      break;
 	    }
 
-	    changeP(fp, sp, add);
-	    reinitprob(ds, fp, sp, add, temp, temp2);
+	    changeP(alphOptProblem, projectedSubProblem, add);
+	    reinitprob(fullDataset, alphOptProblem, projectedSubProblem, add, temp, temp2);
 
 	    free(temp);
 	    free(temp2);
@@ -102,12 +102,12 @@ void run_serial_problem(struct denseData *ds, struct Fullproblem *fp, struct Pro
 
 	  if (n) {
 	    // BCs broken, fix one at a time for the moment
-	    k = singleswap(ds, fp, sp, n, &parameters);
+	    k = singleswap(fullDataset, alphOptProblem, projectedSubProblem, n, &parameters);
 	    if (k < 0) {
-	      shrinkSize(fp, sp, k+fp->p);
+	      shrinkSize(alphOptProblem, projectedSubProblem, k+alphOptProblem->p);
 	    }
 	    else{
-	      n = checkfpConstraints(fp);
+	      n = checkfpConstraints(alphOptProblem);
 	    }
 	  }
 
@@ -152,32 +152,32 @@ void calcW(struct receiveData *rd){
 	}
 }
 
-void ReceiveCalcBeta(struct Fullproblem *fp, struct receiveData *rd, struct denseData *ds)
+void ReceiveCalcBeta(struct Fullproblem *alphOptProblem, struct receiveData *rd, struct denseData *fullDataset)
 /* Function to calculate the beta from received data.*/
 {
 	int j;
 	#pragma omp parallel private(j)
-	for(int i=0; i<fp->q; i++){
-		fp->beta[i] = 0.0;
-		for( j=0; j<ds->nFeatures; j++){
-			fp->beta[i] += rd->w[j]*ds->data[fp->inactive[i]][j];
+	for(int i=0; i<alphOptProblem->q; i++){
+		alphOptProblem->beta[i] = 0.0;
+		for( j=0; j<fullDataset->nFeatures; j++){
+			alphOptProblem->beta[i] += rd->w[j]*fullDataset->data[alphOptProblem->inactive[i]][j];
 		}
-		if(fp->inactive[i] < ds->procPos){
-			fp->gradF[fp->inactive[i]] = 1.0 - fp->beta[i];
+		if(alphOptProblem->inactive[i] < fullDataset->procPos){
+			alphOptProblem->gradF[alphOptProblem->inactive[i]] = 1.0 - alphOptProblem->beta[i];
 		}else{
-			fp->gradF[fp->inactive[i]] = 1.0 + fp->beta[i];
+			alphOptProblem->gradF[alphOptProblem->inactive[i]] = 1.0 + alphOptProblem->beta[i];
 		}
-		if(fp->inactive[i] < ds->procPos){
-			fp->beta[i] = .05 + fp->beta[i] + rd->ytr;
+		if(alphOptProblem->inactive[i] < fullDataset->procPos){
+			alphOptProblem->beta[i] = .05 + alphOptProblem->beta[i] + rd->ytr;
 		}else{
-			fp->beta[i] = .05 - fp->beta[i] - rd->ytr;
+			alphOptProblem->beta[i] = .05 - alphOptProblem->beta[i] - rd->ytr;
 		}
 	}
 }
 
 
 
-void run_parallel_algorithm(struct receiveData *rd, struct denseData *ds, struct Fullproblem *fp, struct yDenseData *nds, struct Fullproblem *nfp, struct Projected *nsp, MPI_Win dataWin, MPI_Win yWin, MPI_Win alphaWin, MPI_Win ytrWin, MPI_Win gradWin, int myid, int nprocs, MPI_Comm Comm, int sending )
+void runParallelAlgorithm(struct receiveData *rd, struct denseData *fullDataset, struct Fullproblem *alphOptProblem, struct yDenseData *nds, struct Fullproblem *nfp, struct Projected *nsp, MPI_Win dataWin, MPI_Win yWin, MPI_Win alphaWin, MPI_Win ytrWin, MPI_Win gradWin, int myid, int nprocs, MPI_Comm Comm, int sending )
 /* Function to run the parallel algorithm. */
 {
 	int *temp = malloc(sizeof(int)*sending);
@@ -188,12 +188,12 @@ void run_parallel_algorithm(struct receiveData *rd, struct denseData *ds, struct
 		itt++;
 		if(myid != 0)
 		{
-			MPI_Get(rd->data1d, rd->total*ds->nFeatures, MPI_DOUBLE, 0, 0 , rd->total*ds->nFeatures, MPI_DOUBLE, dataWin);
+			MPI_Get(rd->data1d, rd->total*fullDataset->nFeatures, MPI_DOUBLE, 0, 0 , rd->total*fullDataset->nFeatures, MPI_DOUBLE, dataWin);
 			MPI_Get(rd->y, rd->total, MPI_INT, 0, 0, rd->total, MPI_INT, yWin);
 		}
 		if(myid == 0){
 			printf("Parallel Iteration: %d\n",itt);
-			run_Yserial_problem(nds, nfp, nsp);
+			runSerialProblem(nds, nfp, nsp);
 		}
 		MPI_Win_fence(0, dataWin);
 		MPI_Win_fence(0, yWin);
@@ -214,9 +214,9 @@ void run_parallel_algorithm(struct receiveData *rd, struct denseData *ds, struct
 			rd->ytr = nsp->ytr;
 		}
 
-		ReceiveCalcBeta(fp, rd, ds);
+		ReceiveCalcBeta(alphOptProblem, rd, fullDataset);
 
-		local_n[myid] = find_n_worst(temp, sending, fp, nprocs);
+		local_n[myid] = find_n_worst(temp, sending, alphOptProblem, nprocs);
 		int global_n = 0;
 		for(int i=0; i<nprocs; i++){
 			MPI_Bcast(local_n + i, 1, MPI_INT, i, Comm);
@@ -232,10 +232,10 @@ void run_parallel_algorithm(struct receiveData *rd, struct denseData *ds, struct
 		MPI_Win_fence(0, yWin);
 
 		for (int i=0; i < local_n[myid]; i++){
-			MPI_Put(ds->data[temp[i]], ds->nFeatures, MPI_DOUBLE, 0, ds->nFeatures*(rd->total+local_start+i), ds->nFeatures, MPI_DOUBLE, dataWin);
-			MPI_Put(&fp->gradF[temp[i]], 1, MPI_DOUBLE, 0, rd->total+local_start+i, 1, MPI_DOUBLE, gradWin);
+			MPI_Put(fullDataset->data[temp[i]], fullDataset->nFeatures, MPI_DOUBLE, 0, fullDataset->nFeatures*(rd->total+local_start+i), fullDataset->nFeatures, MPI_DOUBLE, dataWin);
+			MPI_Put(&alphOptProblem->gradF[temp[i]], 1, MPI_DOUBLE, 0, rd->total+local_start+i, 1, MPI_DOUBLE, gradWin);
 			int y_send = -1;
-			if(temp[i] < ds->procPos){
+			if(temp[i] < fullDataset->procPos){
 				y_send = 1;
 			}
 			MPI_Put(&y_send, 1, MPI_INT, 0, rd->total+(local_start)+i, 1, MPI_INT, yWin);
@@ -280,26 +280,26 @@ void update_root_nfp(struct yDenseData *nds, struct Fullproblem *nfp, int nprocs
 	}
 }
 
-int find_n_worst(int *temp, int n, struct Fullproblem *fp, int flag)
+int find_n_worst(int *temp, int n, struct Fullproblem *alphOptProblem, int flag)
 /* Function to find the n most negative beta values on a processor. */
 {
   double *betaVal = malloc(sizeof(double)*n);
   for (int i = 0; i < n; i++) {
     betaVal[i] = 200000;
   }
-  for (int i = 0; i < fp->q; i++)
+  for (int i = 0; i < alphOptProblem->q; i++)
   {
     for (int j = 0; j < n; j++)
     {
-      if (fp->beta[i] < betaVal[j])
+      if (alphOptProblem->beta[i] < betaVal[j])
       {
         for (int k = n - 1; k > j ; k--)
         {
           temp[k] = temp[k-1];
           betaVal[k] = betaVal[k-1];
         }
-        temp[j] = fp->inactive[i];
-        betaVal[j] = fp->beta[i];
+        temp[j] = alphOptProblem->inactive[i];
+        betaVal[j] = alphOptProblem->beta[i];
         break;
       }
     }
